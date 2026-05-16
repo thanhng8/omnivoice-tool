@@ -1,0 +1,5 @@
+English: Hello, this is an OmniVoice test in English.
+French: Bonjour, ceci est un test multilingue.
+alice|English: This line is cloned using the alice profile (if it exists).
+[laughter] this is a non-verbal marker test.
+Japanese: こんにちは。これは日本語テストです。

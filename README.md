@@ -1,310 +1,338 @@
-# OmniVoice 🌍
+# OmniVoice TTS — Local HTTP + WebSocket Server & Web UI
+
+> A toolkit I built **on top of** [k2-fsa's OmniVoice](https://github.com/k2-fsa/OmniVoice) that turns the zero-shot TTS engine into a local HTTP + WebSocket server with a feature-rich browser client. Everything in this section lives in [`tool/`](tool/) and is **not part of the upstream project**.
 
 <p align="center">
-  <img width="200" height="200" alt="OmniVoice" src="https://zhu-han.github.io/omnivoice/pics/omnivoice.jpg" />
+  <img src="main.png" alt="OmniVoice TTS Web UI">
 </p>
-
-<p align="center">
-  <a href="https://huggingface.co/k2-fsa/OmniVoice"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Model-FFD21E" alt="Hugging Face Model"></a>
-  &nbsp;
-  <a href="https://huggingface.co/spaces/k2-fsa/OmniVoice"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Space-blue" alt="Hugging Face Space"></a>
-  &nbsp;
-  <a href="https://arxiv.org/abs/2604.00688"><img src="https://img.shields.io/badge/arXiv-Paper-B31B1B.svg"></a>
-  &nbsp;
-  <a href="https://zhu-han.github.io/omnivoice"><img src="https://img.shields.io/badge/GitHub.io-Demo_Page-blue?logo=GitHub&style=flat-square"></a>
-  &nbsp;
-  <a href="https://colab.research.google.com/github/k2-fsa/OmniVoice/blob/master/docs/OmniVoice.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"></a>
-</p>
-
-OmniVoice is a state-of-the-art massively multilingual zero-shot text-to-speech (TTS) model supporting over 600 languages. Built on a novel diffusion language model-style architecture, it generates high-quality speech with superior inference speed, supporting voice cloning and voice design.
-
-**Contents**: [Key Features](#key-features) | [Installation](#installation) | [Quick Start](#quick-start) | [Python API](#python-api) | [Command-Line Tools](#command-line-tools) | [Training & Evaluation](#training--evaluation) | [Discussion](#discussion--communication) | [Citation](#citation)
-
-## Key Features
-
-- **600+ Languages Supported**: The broadest language coverage among zero-shot TTS models ([full list](docs/languages.md)).
-- **Voice Cloning**: State-of-the-art voice cloning quality.
-- **Voice Design**: Control voices via assigned speaker attributes (gender, age, pitch, dialect/accent, whisper, etc.).
-- **Fine-grained Control**: Non-verbal symbols (e.g., `[laughter]`) and pronunciation correction via pinyin or phonemes.
-- **Fast Inference**: RTF as low as 0.025 (40x faster than real-time).
-- **Diffusion Language Model-style Architecture**: A clean, streamlined, and scalable design that delivers both quality and speed.
 
 ---
 
-## Installation
+## ✨ Highlights
 
-Choose **one** of the following methods: **pip** or **uv**.
+- 🚀 **Interactive launcher** — `start_omnivoice_server.bat` shows a numbered menu (GPU + ASR / GPU only / CPU / custom port / advanced) and starts the server in seconds.
+- ⚡ **Sub-second startup after first run** — `HF_HUB_OFFLINE=1` skips network checks; cached model loads in 3–5 s.
+- 🌍 **646 languages** — every language OmniVoice supports is exposed in the UI dropdown, with popular ones surfaced first.
+- 🎭 **Three generation modes per line** — switch between **Auto Voice**, **Voice Clone** (from gallery or upload), and **Voice Design** (gender × age × pitch × accent × dialect) row by row.
+- 🎙️ **Pre-built Voice Gallery** — `build_voice_gallery.py` ships curated voice packs you can clone consistently. Includes 9 English design presets, 8 Chinese presets (5 demographic + 3 dialects), and 20 Vietnamese voices via cross-lingual cloning (10 female + 10 male, child → elderly).
+- 🎯 **Auto-grouped voice browser** — voices are organized by language, then by gender (Female / Male / Other), sorted by age and pitch. Filter buttons + search bar + ▶ preview button on every voice.
+- 🧬 **Cross-lingual voice synthesis** — generate controlled female/male/age/pitch voices for any of the 646 languages by passing a Chinese-language Voice Design through cross-lingual cloning.
+- 🔬 **Every generation parameter exposed** — `num_step`, `guidance_scale`, `t_shift`, `position_temperature`, `class_temperature`, `layer_penalty_factor`, `denoise`, `preprocess_prompt`, `postprocess_output`, `audio_chunk_duration`, `audio_chunk_threshold`, `speed`, `duration` — all surfaced as sliders / inputs.
+- 🎵 **13 non-verbal markers + pinyin/CMU phoneme overrides** — toolbar buttons insert `[laughter]`, `[sigh]`, `[question-en]`, etc. directly into the cursor position.
+- 📥 **Bulk import** — load dialogue from `.xlsx`, `.csv`, `.txt`, or markdown tables; quick-prefix syntax `voice|lang: text` auto-fills mode and language.
+- 📦 **Per-line audio + zip export** — convert N lines, get N `.wav` files plus an `omnivoice_YYYY-MM-DD.zip` bundle.
+- 🔌 **Open HTTP + WebSocket API** — single port (8765) serves the web page, voice profile CRUD, and TTS WebSocket. Drop-in client examples for Browser, Chrome MV3 extension, Node.js, Python.
+- 👤 **Voice profile manager** — upload your own 3–10 s reference audio via the UI. Files are saved to `tool/voice_prompts/` as `<name>.wav` + `<name>.json` and survive across sessions.
 
-### pip
+---
 
-> We recommend using a fresh virtual environment (e.g., `conda`, `venv`, etc.) to avoid conflicts.
+## 📁 What's in `tool/`
 
-**Step 1**: Install PyTorch
+| File / Folder | Description |
+|---|---|
+| [`ws_omnivoice_server.py`](tool/ws_omnivoice_server.py) | aiohttp-based server. Loads OmniVoice once on startup, exposes HTTP routes for the static web page + voice profile CRUD, and a WebSocket route for streaming TTS. Auto-detects CUDA / MPS / CPU. Inference is serialised behind an `asyncio.Lock` to avoid GPU contention. |
+| [`omnivoice_web.html`](tool/omnivoice_web.html) | Standalone single-page client. Three-step layout (pick voice → write text → generate), a Voice Gallery with gender/age grouping + ▶ preview on every voice, a live `instruct →` preview for Voice Design, and a multi-line dialogue table where each row can override mode/voice/language. No build step. |
+| [`build_voice_gallery.py`](tool/build_voice_gallery.py) | Pre-builds the curated voice gallery. For EN/ZH it runs the native Voice Design pack; for other languages it does **cross-lingual design cloning** (controlled English/Chinese reference → cloned to the target language) plus a random pack auto-classified by median F0 (`librosa.yin`). All output is saved as ready-to-clone profiles. |
+| [`start_omnivoice_server.bat`](tool/start_omnivoice_server.bat) | Interactive Windows launcher with a numbered menu (`[1]` GPU+ASR, `[2]` GPU only, `[3]` CPU, `[4]` custom port, `[5]` advanced). Sets `HF_HUB_OFFLINE=1` and `TRANSFORMERS_OFFLINE=1` so subsequent boots are 3–5 s. Skips the menu if args are passed directly. |
+| [`WEBSOCKET_API.md`](tool/WEBSOCKET_API.md) | Full protocol spec covering all 3 modes, every generation parameter, voice profile HTTP CRUD, and ready-to-paste examples for vanilla JS, Chrome MV3 (with offscreen audio playback), Node.js, and Python. |
+| [`voice_prompts/`](tool/voice_prompts/) | The voice gallery directory. Each profile is `<name>.wav` (audio) + `<name>.json` (`{"ref_text", "language", "note", "tags"}`). Pre-populated with 45 curated voices after a one-time `build_voice_gallery.py` run. |
+| [`samples/`](tool/samples/) | Ready-to-import dialogue samples in `.csv`, `.md` (markdown table), and `.txt` (with `voice\|lang: text` prefix shorthand). |
 
-<details>
-<summary>NVIDIA GPU</summary>
+---
 
-```bash
-# Install pytorch with your CUDA version, e.g.
-pip install torch==2.8.0+cu128 torchaudio==2.8.0+cu128 --extra-index-url https://download.pytorch.org/whl/cu128
+## 🚀 Quick Start (Windows)
+
+**1. Install OmniVoice** — see [Upstream Setup](#-upstream-setup) below. Only needed once.
+
+**2. (Optional but recommended) Pre-build the voice gallery:**
+
+```bat
+cd tool
+python build_voice_gallery.py --languages vi,en,zh --xlingual --xlingual-via zh
 ```
-> See [PyTorch official site](https://pytorch.org/get-started/locally/) for other versions installation.
 
-</details>
+This generates **45 ready-to-clone voices** (9 EN design + 4 EN random + 8 ZH design + 4 ZH random + 20 VI cross-lingual = 45 profiles) in about **6–7 minutes** on a GTX 1660 SUPER. RTX 30/40 series finishes in under a minute.
 
-<details>
-<summary>Apple Silicon</summary>
+**3. Start the server:**
 
-```bash
-pip install torch==2.8.0 torchaudio==2.8.0
+```bat
+cd tool
+start_omnivoice_server.bat
 ```
 
-</details>
+A menu appears — pick `[1]` for GPU + Whisper (default), `[2]` for GPU without Whisper (saves 1.5 GB VRAM), or `[3]` for CPU. The server listens on `http://127.0.0.1:8765`.
 
-**Step 2**: Install OmniVoice (choose one)
+**4. Open the web UI:**
+
+Browse to **<http://127.0.0.1:8765/>**. The page connects automatically over WebSocket on the same port.
+
+> **Don't open the HTML file directly via `file://`** — relative API paths get blocked by the browser. The page falls back to `http://127.0.0.1:8765` if you do, but going through the server is cleaner.
+
+---
+
+## 🌐 Web UI Features (`omnivoice_web.html`)
+
+A self-contained single-page app, served by the local server. Layout follows a clear **3-step workflow**:
+
+### Step 1 — Pick how to source the voice
+
+Three mode tabs, each with an inline banner explaining when to use it:
+
+| Mode | What you provide | Result |
+|---|---|---|
+| 🎲 **Auto Voice** | Just text | Random voice each run, different every time. Good for variety / quick tests. |
+| 🧬 **Voice Clone** | Pick from gallery, or upload your own audio | Cloned voice. **Consistent** across runs using the same profile. |
+| 🎨 **Voice Design** | Describe gender, age, pitch, accent, dialect | Voice matching the description. Best for English / Chinese; other languages may be unstable — use Clone with `xl_*` profiles instead. |
+
+### Voice Gallery (always visible below the mode tabs)
+
+- **Auto-grouped** by language (with country flag emoji), then by gender (👩 Female / 👨 Male / ⚪ Other), sorted within each gender by age (child → elderly) then pitch (low → high).
+- Each voice is a tile showing an emoji ✨ for age × gender, the short name, and a descriptive note (e.g. *"Female · Young · Bright (青年女高音)"*).
+- **▶ button** on every tile streams the reference audio for instant preview.
+- **Click the tile** to select it as the default voice — the page automatically switches the mode tab to **Clone**.
+- **Filter buttons** (All / Female / Male / Other) and a **search box** narrow the list by name, language, or note.
+- **+ Upload your own** opens a modal where you can save a 3–10 s reference recording (Whisper auto-transcribes if `--no-asr` was not set).
+
+### Voice Design panel
+
+- One dropdown per category — **Gender · Age · Pitch · Style · English Accent · Chinese Dialect** — pulled live from the server's `/api/info`.
+- **Live `instruct →` preview** updates as you change dropdowns so you can see exactly what the model receives.
+- **Free-text override** (`Custom instruct`) lets you pass arbitrary attribute strings that bypass the dropdowns.
+
+### Step 2 — Type your dialogue
+
+- Multi-line table, one row per audio file.
+- **Per-line override**: each row has its own Mode / Voice (or Instruct) / Language selector — perfect for two-speaker dialogues, multi-language announcements, or characters with distinct voices.
+- **Marker toolbar** with one button per non-verbal marker (`[laughter]` `[sigh]` `[question-en]` `[question-ah]` `[surprise-oh]` `[dissatisfaction-hnn]` etc.). Clicking a button inserts the marker at the current cursor position.
+- **Quick keyboard flow**: `Enter` adds a new line below; `Backspace` on an empty line deletes it.
+
+### Step 3 — Generate audio
+
+- **Convert All** (`Ctrl+Enter`) renders the whole queue, plays each result back automatically in order, and shows real-time progress like `🎵 Processing 3 / 5… [clone] Hello world…`.
+- **Per-line audio player** with individual `⬇ Save` button (`01_clone_alice_Hello.wav` etc.).
+- **⬇ Download all (zip)** — bundles every result into `omnivoice_YYYY-MM-DD.zip`.
+- **⏹ Stop** — halts mid-batch and cancels playback immediately.
+
+### Bulk import & paste shortcuts
+
+| Action | How |
+|---|---|
+| **Paste multi-line** | Click `📋 Paste multi-line`. Each line becomes a row. Supports `vi: Hello world` (lang prefix) and `gallery_vi_xl_female_young: Hello world` (voice prefix → auto-Clone). |
+| **Import file** | Click `📥 Import file`. Supports `.xlsx` (via SheetJS), `.csv`, `.md` markdown tables, and plain `.txt`. Column auto-detection (`voice` / `lang` / `text` / `mode`). |
+
+### Connection + onboarding
+
+- Live status pill (green = connected · yellow = busy · red = disconnected) with auto-reconnect.
+- Dismissible onboarding panel with the 3-step walkthrough — once closed it stays collapsed via `localStorage`.
+
+---
+
+## 🖥️ Server Features (`ws_omnivoice_server.py`)
+
+### Single port, two protocols
+
+The server uses [aiohttp](https://docs.aiohttp.org) to expose both HTTP and WebSocket on **the same port (8765)**:
+
+| Route | Purpose |
+|---|---|
+| `GET /` | Serves `omnivoice_web.html` (no caching). |
+| `GET /api/info` | Server capabilities — list of 646 languages, voice profiles, voice-design attribute catalogue, generation defaults, non-verbal markers. |
+| `GET /api/voices` | List saved voice profiles. |
+| `POST /api/voices` | Upload a new profile (multipart: `name`, `ref_text`, `language`, `note`, `audio`). |
+| `DELETE /api/voices/<name>` | Remove a profile. |
+| `GET /api/voices/<name>/audio` | Stream the original reference WAV (used by the gallery's preview button). |
+| `WS /ws` | TTS WebSocket. |
+
+### Three modes, all gen params
+
+The WebSocket request schema accepts every parameter the underlying `model.generate()` exposes:
+
+```json
+{
+  "request_id": 42,
+  "text":   "Hello world",
+  "lang":   "Vietnamese",
+  "mode":   "clone",
+  "voice":  "gallery_vi_xl_female_young",
+  "instruct": null,
+  "num_step": 32,
+  "guidance_scale": 2.0,
+  "t_shift": 0.1,
+  "layer_penalty_factor": 5.0,
+  "position_temperature": 5.0,
+  "class_temperature": 0.0,
+  "denoise": true,
+  "preprocess_prompt": true,
+  "postprocess_output": true,
+  "speed": 1.0,
+  "duration": null,
+  "audio_chunk_duration": 15.0,
+  "audio_chunk_threshold": 30.0
+}
+```
+
+For each request the server replies with two paired frames:
+1. JSON `audio_meta` — `{ type, request_id, text, duration, latency_ms, sample_rate, size, mode, language }`.
+2. Binary frame — a complete WAV (16-bit PCM mono, 24 kHz).
+
+### Concurrency & stability
+
+- **One-at-a-time inference** behind an `asyncio.Lock` — keeps GPU memory predictable and avoids OOM on small cards.
+- `request_id` field is echoed back so multiple in-flight requests can be matched correctly.
+- **Disconnect-safe**: if a client drops mid-inference the server discards its result and keeps serving others.
+- `--no-asr` flag skips loading Whisper (saves ~1.5 GB VRAM); when off, voice profiles can be uploaded without `ref_text` because Whisper auto-transcribes.
+
+### CLI
+
+```bat
+python ws_omnivoice_server.py [--port N] [--ip 127.0.0.1] [--device cuda|mps|cpu] [--cpu] [--dtype float16|float32|bfloat16] [--no-asr] [--asr-model openai/whisper-large-v3-turbo] [--model k2-fsa/OmniVoice]
+```
+
+The `start_omnivoice_server.bat` wrapper provides an interactive menu for the most common flag combinations.
+
+---
+
+## 🎙️ Voice Gallery & `build_voice_gallery.py`
+
+OmniVoice is **zero-shot** — it has no fixed voice catalogue out of the box. Every generation in Auto mode produces a different random voice. To give you a curated, browsable, *reproducible* set of voices, `build_voice_gallery.py` pre-generates a gallery you can use just like a traditional preset library.
+
+### Three preset packs
+
+| Pack | Languages | How it works |
+|---|---|---|
+| **Native design** | EN, ZH | Voice Design with native-language attributes (`female, young adult, british accent`, `女, 青年, 高音调`, `四川话`, …). Deterministic and well-trained. |
+| **Cross-lingual design** | Any non-EN/ZH (e.g. `vi`, `ja`, `ko`, `fr`) | Step 1: generate a controlled reference in the source language (default: Chinese). Step 2: cross-lingually clone to the target language. Step 3: save the target-language audio as the gallery profile. Yields named voices like `gallery_vi_xl_female_young` with controlled gender × age × pitch — at the cost of a slight source-language accent. |
+| **Random pack** | Any | Calls Auto Voice N times, then auto-classifies each output by median F0 (`librosa.yin`) into Female / Male / Neutral and renames profiles to `<lang>_<gender>_NN` sorted by pitch. |
+
+### Pre-baked Vietnamese pack
+
+Running `--xlingual --xlingual-via zh` for Vietnamese yields **20 profiles** (10 female + 10 male) covering every age × pitch combination:
+
+```
+gallery_vi_xl_female_child         gallery_vi_xl_male_child
+gallery_vi_xl_female_teen          gallery_vi_xl_male_teen
+gallery_vi_xl_female_young_high    gallery_vi_xl_male_young_high
+gallery_vi_xl_female_young         gallery_vi_xl_male_young
+gallery_vi_xl_female_young_vhigh   gallery_vi_xl_male_young_low
+gallery_vi_xl_female_middle        gallery_vi_xl_male_middle
+gallery_vi_xl_female_middle_low    gallery_vi_xl_male_middle_low
+gallery_vi_xl_female_elderly       gallery_vi_xl_male_middle_vlow
+gallery_vi_xl_female_elderly_deep  gallery_vi_xl_male_elderly
+gallery_vi_xl_female_whisper       gallery_vi_xl_male_elderly_deep
+```
+
+### Common usage
+
+```bat
+:: Defaults: VI random pack + EN design pack + ZH design pack
+python build_voice_gallery.py
+
+:: Vietnamese-focused: 20 named voices + 16 random
+python build_voice_gallery.py --languages vi --xlingual --xlingual-via zh --random-voices 16
+
+:: Many languages
+python build_voice_gallery.py --languages vi,en,zh,ja,ko,fr,de,es,it,ru --random-voices 8 --xlingual
+
+:: Skip everything that already exists
+python build_voice_gallery.py --skip-existing
+```
+
+| Flag | Meaning |
+|---|---|
+| `--languages` | Comma-separated language codes (default `vi,en,zh`). |
+| `--random-voices N` | Number of random samples per language (default 4). |
+| `--xlingual` | Build a cross-lingual design pack for non-EN/ZH languages. |
+| `--xlingual-via {en,zh}` | Source language for the cross-lingual pack. `zh` (default) gives 20 entries with reliable gender/age control; `en` gives 8 entries. |
+| `--num-step N` | Diffusion steps for generation (default 24). Lower = faster, lower quality. |
+| `--no-design` / `--no-random` | Skip respective pack. |
+| `--skip-existing` | Don't regenerate profiles already on disk. |
+| `--device` / `--dtype` / `--cpu` | Same as the server. |
+
+---
+
+## 🔌 HTTP + WebSocket API (at a glance)
+
+**Connect:** `ws://127.0.0.1:8765/ws`
+
+**Handshake (server → client, on connect):**
+```json
+{
+  "status": "connected",
+  "device": "cuda",
+  "sample_rate": 24000,
+  "modes": ["auto", "clone", "design"],
+  "languages": [{"name": "English", "id": "en"}, /* … 646 entries … */],
+  "voices":    [{"name": "gallery_vi_xl_female_young", "ref_text": "…", "language": "Vietnamese", "note": "Female · Young · Neutral"}, /* … */],
+  "voice_design": {"gender": {/* … */}, "age": {/* … */}, /* … */},
+  "nonverbal_markers": ["[laughter]", "[sigh]", /* … 13 markers … */],
+  "gen_params": {"num_step": {"default": 32, "min": 4, "max": 64, "step": 1}, /* … */}
+}
+```
+
+**Request (client → server):**
+```json
+{
+  "text":   "Hello world",
+  "lang":   "Vietnamese",
+  "mode":   "clone",
+  "voice":  "gallery_vi_xl_female_young"
+}
+```
+
+**Reply:** JSON `audio_meta` frame followed by a binary WAV frame.
+
+**Voice profile HTTP routes:** `GET /api/voices`, `POST /api/voices` (multipart upload), `DELETE /api/voices/<n>`, `GET /api/voices/<n>/audio` (stream original WAV).
+
+Full spec with Chrome MV3 / Node / Python examples → [`tool/WEBSOCKET_API.md`](tool/WEBSOCKET_API.md).
+
+---
+
+## 📦 Upstream Setup
+
+Install OmniVoice itself (the server uses the same Python environment):
 
 ```bash
-# From PyPI (stable release)
-pip install omnivoice
+# 1. Install PyTorch matching your hardware
+pip install torch==2.8.0+cu128 torchaudio==2.8.0+cu128 \
+    --extra-index-url https://download.pytorch.org/whl/cu128
 
-# From the latest source on GitHub (no need to clone)
-pip install git+https://github.com/k2-fsa/OmniVoice.git
-
-# For development (clone first, editable install)
-git clone https://github.com/k2-fsa/OmniVoice.git
+# 2. Install OmniVoice (editable for development)
 cd OmniVoice
 pip install -e .
+
+# 3. Install the extra runtime deps the tool/ uses
+pip install aiohttp websockets
 ```
 
-### uv
+After that, `start_omnivoice_server.bat` handles the rest. First launch downloads ~4.6 GB of models from HuggingFace (3.1 GB OmniVoice + 1.5 GB Whisper-large-v3-turbo) into `~/.cache/huggingface/hub`. Subsequent launches load from cache in 3–5 s thanks to `HF_HUB_OFFLINE=1`.
 
-Clone the repository and sync dependencies:
+> **HuggingFace mirror tip**: if downloads are slow, set `HF_ENDPOINT=https://hf-mirror.com` before the first launch.
 
-```bash
-git clone https://github.com/k2-fsa/OmniVoice.git
-cd OmniVoice
-uv sync
-```
+### VRAM requirements
 
-> **Tip**: Can use mirror with `uv sync --default-index "https://mirrors.aliyun.com/pypi/simple"`
-
----
-
-## Quick Start
-
-Try OmniVoice without coding:
-
-- Launch the local web UI: `omnivoice-demo --ip 0.0.0.0 --port 8001`
-
-- Or try it directly on [HuggingFace Space](https://huggingface.co/spaces/k2-fsa/OmniVoice)
-
-- Or run it in Google Colab: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/k2-fsa/OmniVoice/blob/master/docs/OmniVoice.ipynb)
-
-> If you have trouble connecting to HuggingFace when downloading the pre-trained models, set `export HF_ENDPOINT="https://hf-mirror.com"` before running.
-
-For full usage, see the [Python API](#python-api) and [Command-Line Tools](#command-line-tools) sections below.
-
----
-
-## Python API
-
-OmniVoice supports three generation modes. All features in this section are also available via [command-line tools](#command-line-tools).
-
-### Voice Cloning
-
-Clone a voice from a short reference audio. Provide `ref_audio` and `ref_text`:
-
-```python
-from omnivoice import OmniVoice
-import soundfile as sf
-import torch
-
-model = OmniVoice.from_pretrained(
-    "k2-fsa/OmniVoice",
-    device_map="cuda:0",
-    dtype=torch.float16
-)
-# Apple Silicon users: use device_map="mps" instead
-
-audio = model.generate(
-    text="Hello, this is a test of zero-shot voice cloning.",
-    ref_audio="ref.wav",
-    ref_text="Transcription of the reference audio.",
-) # audio is a list of `np.ndarray` with shape (T,) at 24 kHz.
-
-# If you don't want to input `ref_text` manually, you can directly omit the `ref_text`.
-# The model will use Whisper ASR to auto-transcribe it.
-
-sf.write("out.wav", audio[0], 24000)
-```
-
-> **Tips**
->
-> - Use a 3–10 seconds reference audio clip. Longer audio slows down inference and may degrade cloning quality.
-> - For standard pronunciation, use a reference audio in the **same language** as the target speech. In cross-lingual voice cloning (i.e., the reference audio and target speech are in different languages), the generated speech will carry an accent from the reference audio's language.
-> - For better results with Arabic numerals, normalize them to words first (e.g., "123" → "one hundred twenty-three") with text normalization tools (e.g., [WeTextProcessing](https://github.com/wenet-e2e/WeTextProcessing)).
->
-> For more tips, see [docs/tips.md](docs/tips.md).
-
-### Voice Design
-
-Describe the desired voice with speaker attributes — no reference audio needed.
-Supported attributes: **gender** (male/female), **age** (child to elderly),
-**pitch** (very low to very high), **style** (whisper), **English accent**
-(American, British, etc.), and **Chinese dialect** (四川话, 陕西话, etc.).
-Attributes are comma-separated and freely combinable across categories.
-
-```python
-audio = model.generate(
-    text="Hello, this is a test of zero-shot voice design.",
-    instruct="female, low pitch, british accent",
-)
-```
-
-> **Note**: Voice design was trained on Chinese and English data only. It can generalize to other languages, but results can be unstable for some low-resource languages.
-
-See [docs/voice-design.md](docs/voice-design.md) for the full attribute
-reference, Chinese equivalents, and usage tips.
-
-### Auto Voice
-
-Let the model choose a voice automatically:
-
-```python
-audio = model.generate(text="This is a sentence without any voice prompt.")
-```
-
-### Generation Parameters
-
-All above three modes share the same `model.generate()` API. You can further control the generation behavior via keyword arguments:
-
-```python
-audio = model.generate(
-    text="...",
-    num_step=32,  # diffusion steps (or 16 for faster inference)
-    speed=1.0,     # speed factor (>1.0 faster, <1.0 slower)
-    duration=10.0, # fixed output duration in seconds (overrides speed)
-    # ... more options
-)
-```
-See more detailed control in [docs/generation-parameters.md](docs/generation-parameters.md).
-
-### Non-Verbal & Pronunciation Control
-
-OmniVoice supports inline **non-verbal symbols** and **pronunciation correction** within the input text.
-
-**Non-verbal symbols**: Insert tags like `[laughter]` directly in the text to add expressive non-verbal sounds.
-
-```python
-audio = model.generate(text="[laughter] You really got me. I didn't see that coming at all.")
-```
-
-Supported tags: `[laughter]`, `[sigh]`, `[confirmation-en]`, `[question-en]`, `[question-ah]`, `[question-oh]`, `[question-ei]`, `[question-yi]`, `[surprise-ah]`, `[surprise-oh]`, `[surprise-wa]`, `[surprise-yo]`, `[dissatisfaction-hnn]`.
-
-**Pronunciation control (Chinese)**: Use pinyin with tone numbers to correct specific character pronunciations.
-
-```python
-audio = model.generate(text="这批货物打ZHE2出售后他严重SHE2本了，再也经不起ZHE1腾了。")
-```
-
-**Pronunciation control (English)**: Use [CMU pronunciation dictionary](https://svn.code.sf.net/p/cmusphinx/code/trunk/cmudict/cmudict.0.7a)  (uppercase, in brackets) to override default English pronunciations.
-
-```python
-audio = model.generate(text="He plays the [B EY1 S] guitar while catching a [B AE1 S] fish.")
-```
-
----
-
-## Command-Line Tools
-
-Three CLI entry points are provided. The CLI tools support all features available in the Python API (voice cloning, voice design, auto voice, generation parameters, etc.) — all controlled via command-line arguments.
-
-| Command | Description | Source |
+| Setup | VRAM | Notes |
 |---|---|---|
-| `omnivoice-demo` | Interactive Gradio web demo | [omnivoice/cli/demo.py](omnivoice/cli/demo.py) |
-| `omnivoice-infer` | Single-item inference | [omnivoice/cli/infer.py](omnivoice/cli/infer.py) |
-| `omnivoice-infer-batch` | Batch inference across multiple GPUs | [omnivoice/cli/infer_batch.py](omnivoice/cli/infer_batch.py) |
-
-### Demo
-
-```bash
-omnivoice-demo --ip 0.0.0.0 --port 8001
-```
-
-Provides a web UI for voice cloning and voice design. See `omnivoice-demo --help` for all options.
-
-### Single Inference
-
-```bash
-# Voice Cloning
-# ref_text can be omitted (Whisper will auto-transcribe ref_audio to get it).
-omnivoice-infer \
-    --model k2-fsa/OmniVoice \
-    --text "This is a test for text to speech." \
-    --ref_audio ref.wav \
-    --ref_text "Transcription of the reference audio." \
-    --output hello.wav
-
-# Voice Design
-omnivoice-infer --model k2-fsa/OmniVoice \
-    --text "This is a test for text to speech." \
-    --instruct "male, British accent" \
-    --output hello.wav
-
-# Auto Voice
-omnivoice-infer \
-    --model k2-fsa/OmniVoice \
-    --text "This is a test for text to speech."\
-    --output hello.wav
-```
-
-### Batch Inference
-
-`omnivoice-infer-batch` can distribute batch inference across multiple GPUs, designed for large-scale TTS tasks.
-
-```bash
-omnivoice-infer-batch \
-    --model k2-fsa/OmniVoice \
-    --test_list test.jsonl \
-    --res_dir results/
-```
-
-The test list is a JSONL file where each line is a JSON object:
-```json
-{"id": "sample_001", "text": "Hello world", "ref_audio": "/path/to/ref.wav", "ref_text": "Reference transcript", "instruct": "female, british accent", "language_id": "en", "duration": 10.0, "speed": 1.0}
-```
-Only `id` and `text` are mandatory fields. `ref_audio` and `ref_text` are used in voice cloning mode. `instruct` is used in voice design mode. If no reference audio or instruct are provided, the model will generate text in a random voice.
-
-`language_id`, `duration`, and `speed` are optional. `duration` (in seconds) fixes the output length; `speed` controls the speaking rate. If `duration` and `speed` are both provided, `speed` will be ignored.
+| GPU + Whisper (default) | ~4 GB | Recommended. Allows uploading voice profiles without `ref_text`. |
+| GPU only (`--no-asr`) | ~2.5 GB | For ≤6 GB cards. `ref_text` becomes required when uploading voices. |
+| CPU (`--cpu`) | 0 GB | 5–10× slower than GPU. Works on any machine. |
 
 ---
 
-## Training & Evaluation
+## About Upstream OmniVoice
 
-See [examples/](examples/) for the complete pipeline — from data preparation to training, evaluation, and finetuning.
+[**OmniVoice**](https://github.com/k2-fsa/OmniVoice) by the [k2-fsa](https://github.com/k2-fsa) Next-gen Kaldi team (Xiaomi AI Lab) is a state-of-the-art massively multilingual zero-shot TTS model supporting over **600 languages**. Its diffusion language-model architecture delivers RTF as low as 0.025 (40× faster than real-time on capable hardware) while supporting voice cloning, voice design, non-verbal expression markers, and inline pinyin/CMU pronunciation overrides.
 
----
-
-## Discussion & Communication
-
-You can directly discuss on [GitHub Issues](https://github.com/k2-fsa/OmniVoice/issues).
-
-You can also scan the QR code to join our wechat group or follow our wechat official account.
-
-| Wechat Group | Wechat Official Account |
-| ------------ | ----------------------- |
-|![wechat](https://k2-fsa.org/zh-CN/assets/pic/wechat_group.jpg) |![wechat](https://k2-fsa.org/zh-CN/assets/pic/wechat_account.jpg) |
-
----
-
-## Community Projects
-
-OmniVoice is supported by a growing ecosystem of community projects.
-Explore them in [Community Projects](docs/community-projects.md).
+- **Models & demo:** [Hugging Face — k2-fsa/OmniVoice](https://huggingface.co/k2-fsa/OmniVoice) · [Interactive Demo](https://huggingface.co/spaces/k2-fsa/OmniVoice)
+- **Paper:** [arXiv:2604.00688](https://arxiv.org/abs/2604.00688)
+- **Demo page:** <https://zhu-han.github.io/omnivoice>
+- **Colab notebook:** [docs/OmniVoice.ipynb](docs/OmniVoice.ipynb)
+- **Upstream README:** see the [original repository](https://github.com/k2-fsa/OmniVoice) for architecture details, training pipeline, evaluation scripts, paper citation, and per-language documentation.
 
 ---
 
 ## Citation
+
+If you use OmniVoice in your research, please cite the upstream paper:
 
 ```bibtex
 @article{zhu2026omnivoice,
@@ -317,6 +345,15 @@ Explore them in [Community Projects](docs/community-projects.md).
 
 ---
 
+## License
+
+- Sample code (including `tool/`): **Apache-2.0** — see [`LICENSE`](LICENSE).
+- Model weights: see the [model license on Hugging Face](https://huggingface.co/k2-fsa/OmniVoice).
+
+---
+
 ## Disclaimer
 
 Users are strictly prohibited from using this model for unauthorized voice cloning, voice impersonation, fraud, scams, or any other illegal or unethical activities. All users shall ensure full compliance with applicable local laws, regulations, and ethical standards. The developers assume no liability for any misuse of this model and advocate for responsible AI development and use, encouraging the community to uphold safety and ethical principles in AI research and applications.
+
+Upstream © 2026 Xiaomi Corp. (k2-fsa). Additions in `tool/` © their respective author.

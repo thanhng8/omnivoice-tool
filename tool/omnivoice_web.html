@@ -1,0 +1,1469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OmniVoice TTS</title>
+<style>
+:root {
+  --bg:#0c0c10; --bg-card:#15151b; --bg-input:#0f0f14; --bg-hover:#1d1d25;
+  --border:#26262e; --border-strong:#3a3a44; --primary:#7986cb; --primary-bg:#5c6bc0;
+  --text:#e7e7e9; --text-dim:#9090a0; --text-faint:#6c6c78;
+  --green:#4caf50; --red:#ef5350; --yellow:#ffb300; --orange:#ff7043;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 1.5rem 1rem; font-size: 14px; line-height: 1.5; }
+.container { max-width: 1180px; margin: 0 auto; }
+
+/* ========== Header ========== */
+.header { text-align: center; margin-bottom: 1.5rem; }
+.header h1 { font-size: 1.65rem; font-weight: 700; letter-spacing: -0.5px; }
+.header h1 .by { color: var(--text-faint); font-size: 0.7rem; font-weight: 400; margin-left: 0.4rem; }
+.header .tagline { color: var(--text-dim); font-size: 0.85rem; margin-top: 0.3rem; }
+.status { display: inline-flex; align-items: center; gap: 0.5rem; margin-top: 0.6rem; font-size: 0.78rem; padding: 0.25rem 0.7rem; background: var(--bg-card); border-radius: 14px; border: 1px solid var(--border); }
+.status .dot { width: 7px; height: 7px; border-radius: 50%; }
+.dot.connected { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.dot.disconnected { background: var(--red); }
+.dot.busy { background: var(--yellow); animation: pulse 1.2s infinite; }
+@keyframes pulse { 50% { opacity: 0.4; } }
+
+/* ========== Onboarding ========== */
+.onboarding { background: linear-gradient(135deg, #1a1a2e 0%, #16162a 100%); border: 1px solid #2a2a40; border-radius: 12px; padding: 0; margin-bottom: 1.5rem; overflow: hidden; }
+.onboarding summary { padding: 0.9rem 1.2rem; cursor: pointer; font-weight: 600; color: var(--primary); list-style: none; user-select: none; display: flex; align-items: center; gap: 0.5rem; }
+.onboarding summary::-webkit-details-marker { display: none; }
+.onboarding summary::after { content: '▼'; margin-left: auto; font-size: 0.7rem; transition: transform 0.2s; }
+.onboarding[open] summary::after { transform: rotate(180deg); }
+.onboarding .body { padding: 0.5rem 1.2rem 1.2rem 1.2rem; color: var(--text-dim); font-size: 0.88rem; }
+.onboarding-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.8rem; margin-top: 0.7rem; }
+.onboarding-step { background: rgba(0,0,0,0.25); padding: 0.8rem; border-radius: 8px; border: 1px solid var(--border); }
+.onboarding-step .num { display: inline-flex; width: 22px; height: 22px; background: var(--primary-bg); color: white; border-radius: 50%; align-items: center; justify-content: center; font-weight: 700; font-size: 0.78rem; margin-right: 0.4rem; }
+.onboarding-step b { color: var(--text); }
+.onboarding-step small { color: var(--text-faint); font-size: 0.78rem; }
+@media (max-width: 720px) { .onboarding-steps { grid-template-columns: 1fr; } }
+
+/* ========== Step sections ========== */
+.step-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; margin-bottom: 1.2rem; }
+.step-header { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1rem; }
+.step-num { display: inline-flex; width: 26px; height: 26px; background: var(--primary-bg); color: white; border-radius: 50%; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; flex-shrink: 0; }
+.step-header h2 { font-size: 1.05rem; font-weight: 600; }
+.step-header .hint { color: var(--text-faint); font-size: 0.78rem; margin-left: auto; }
+
+/* ========== Mode cards (Step 1) ========== */
+.mode-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin-bottom: 1rem; }
+.mode-card { background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 0.9rem; cursor: pointer; transition: all 0.15s; text-align: center; }
+.mode-card:hover { border-color: var(--border-strong); background: var(--bg-hover); }
+.mode-card.active { border-color: var(--primary); background: rgba(92, 107, 192, 0.12); }
+.mode-card .mc-icon { font-size: 1.6rem; }
+.mode-card .mc-title { font-weight: 600; margin-top: 0.3rem; font-size: 0.92rem; }
+.mode-card .mc-desc { color: var(--text-faint); font-size: 0.74rem; margin-top: 0.2rem; line-height: 1.4; }
+@media (max-width: 720px) { .mode-cards { grid-template-columns: 1fr; } }
+
+.mode-content { display: none; }
+.mode-content.active { display: block; }
+
+/* Mode info banner */
+.mode-banner { background: var(--bg-input); border-left: 3px solid var(--primary); padding: 0.6rem 0.9rem; border-radius: 4px; margin-bottom: 0.9rem; font-size: 0.83rem; line-height: 1.55; color: var(--text-dim); }
+.mode-banner b { color: var(--text); }
+.mode-banner code { background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 3px; font-size: 0.78rem; color: #e8c97a; }
+
+/* ========== Voice Gallery ========== */
+.gallery-wrapper { margin-top: 1.2rem; padding-top: 1.2rem; border-top: 1px solid var(--border); }
+.gallery-header { display: flex; align-items: baseline; gap: 0.7rem; margin-bottom: 0.7rem; flex-wrap: wrap; }
+.gallery-header h3 { font-size: 1rem; font-weight: 600; color: var(--text); }
+.gallery-header small { color: var(--text-faint); font-size: 0.78rem; }
+.gallery-toolbar { display: flex; gap: 0.5rem; margin-bottom: 0.8rem; flex-wrap: wrap; align-items: center; }
+.gallery-toolbar input[type=search] { background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.7rem; color: var(--text); font-size: 0.83rem; width: 220px; }
+.gallery-toolbar .filter-btn { background: var(--bg-input); color: var(--text-dim); border: 1px solid var(--border); padding: 0.35rem 0.7rem; border-radius: 16px; font-size: 0.78rem; cursor: pointer; }
+.gallery-toolbar .filter-btn.active { background: var(--primary-bg); color: white; border-color: var(--primary-bg); }
+.gallery-toolbar .filter-btn:hover { background: var(--bg-hover); }
+.gallery-toolbar .filter-btn.active:hover { background: var(--primary); }
+
+.lang-section { margin-bottom: 0.7rem; background: var(--bg-input); border-radius: 8px; border: 1px solid var(--border); }
+.lang-section summary { padding: 0.7rem 1rem; cursor: pointer; user-select: none; list-style: none; font-size: 0.92rem; display: flex; align-items: center; gap: 0.5rem; }
+.lang-section summary::-webkit-details-marker { display: none; }
+.lang-section summary::after { content: '▼'; margin-left: auto; font-size: 0.65rem; color: var(--text-faint); transition: transform 0.2s; }
+.lang-section[open] summary::after { transform: rotate(180deg); }
+.lang-section summary:hover { background: var(--bg-hover); border-radius: 8px 8px 0 0; }
+.lang-section .lang-flag { font-size: 1.1rem; }
+.lang-section .lang-name { font-weight: 600; }
+.lang-section .lang-count { color: var(--primary); font-size: 0.78rem; margin-left: 0.3rem; font-variant-numeric: tabular-nums; }
+.lang-body { padding: 0.5rem 0.9rem 0.9rem 0.9rem; }
+
+.gender-group { margin-top: 0.5rem; }
+.gender-group:first-child { margin-top: 0; }
+.gender-label { font-size: 0.76rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.4rem; padding-left: 0.2rem; display: flex; align-items: center; gap: 0.3rem; }
+.gender-label .gl-emoji { font-size: 0.95rem; }
+.gender-label .gl-count { color: var(--text-faint); margin-left: auto; }
+
+.voice-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.45rem; }
+.voice-tile { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 0.55rem 0.7rem; display: flex; align-items: center; gap: 0.55rem; transition: all 0.12s; cursor: pointer; min-height: 56px; }
+.voice-tile:hover { background: var(--bg-hover); border-color: var(--border-strong); }
+.voice-tile.selected { background: rgba(92, 107, 192, 0.15); border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary) inset; }
+.voice-tile .vt-emoji { font-size: 1.2rem; flex-shrink: 0; }
+.voice-tile .vt-info { flex: 1; min-width: 0; overflow: hidden; }
+.voice-tile .vt-label { font-size: 0.8rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.voice-tile .vt-sub { font-size: 0.68rem; color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.voice-tile .vt-play { background: var(--bg-input); border: 2px solid var(--primary); color: var(--primary); cursor: pointer; padding: 0; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; flex-shrink: 0; transition: all 0.15s; }
+.voice-tile .vt-play:hover { background: var(--primary); color: white; transform: scale(1.08); }
+.voice-tile .vt-play.playing { background: var(--primary); color: white; animation: vt-pulse 1.4s infinite; }
+@keyframes vt-pulse { 0%,100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(121,134,203,0.6); } 50% { transform: scale(1.06); box-shadow: 0 0 0 6px rgba(121,134,203,0); } }
+.voice-tile .vt-del { background: none; border: none; color: var(--text-faint); cursor: pointer; padding: 2px 4px; font-size: 0.78rem; opacity: 0; transition: opacity 0.15s; }
+.voice-tile:hover .vt-del { opacity: 0.6; }
+.voice-tile .vt-del:hover { color: var(--red); opacity: 1; }
+
+.gallery-empty { padding: 2rem 1rem; text-align: center; color: var(--text-faint); background: var(--bg-input); border-radius: 8px; border: 1px dashed var(--border); }
+.gallery-empty code { background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 3px; font-size: 0.78rem; color: #e8c97a; }
+
+.gallery-actions { margin-top: 0.6rem; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; font-size: 0.78rem; color: var(--text-faint); }
+
+/* ========== Voice Design (mode panel) ========== */
+.design-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.7rem; }
+@media (max-width: 720px) { .design-grid { grid-template-columns: 1fr 1fr; } }
+.design-grid label { display: block; font-size: 0.76rem; color: var(--text-dim); margin-bottom: 0.3rem; }
+.design-grid label small { color: var(--text-faint); font-size: 0.68rem; font-weight: 400; }
+.design-grid select { width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 0.45rem 0.55rem; color: var(--text); font-size: 0.83rem; }
+
+.instruct-preview { margin-top: 0.7rem; padding: 0.6rem 0.8rem; background: var(--bg-input); border-radius: 6px; border: 1px solid var(--border); font-family: 'Consolas','SF Mono',monospace; font-size: 0.82rem; color: var(--primary); min-height: 36px; }
+.instruct-preview .label { color: var(--text-faint); font-family: inherit; }
+
+/* ========== Common controls ========== */
+input, select, textarea { background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 0.45rem 0.65rem; color: var(--text); font-size: 0.85rem; font-family: inherit; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); }
+textarea { resize: vertical; min-height: 60px; font-family: inherit; }
+
+button { padding: 0.55rem 1rem; border: none; border-radius: 6px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.15s; font-family: inherit; }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-primary { background: var(--primary-bg); color: white; }
+.btn-primary:hover:not(:disabled) { background: var(--primary); }
+.btn-stop { background: var(--red); color: white; }
+.btn-stop:hover:not(:disabled) { background: #f44336; }
+.btn-secondary { background: var(--bg-input); color: var(--text); border: 1px solid var(--border-strong); }
+.btn-secondary:hover:not(:disabled) { background: var(--bg-hover); }
+.btn-small { padding: 0.35rem 0.7rem; font-size: 0.78rem; }
+
+details.advanced { background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 0; margin-top: 0.8rem; }
+details.advanced summary { padding: 0.6rem 0.9rem; cursor: pointer; font-size: 0.83rem; color: var(--text-dim); user-select: none; }
+details.advanced summary:hover { color: var(--text); }
+details.advanced[open] summary { color: var(--primary); border-bottom: 1px solid var(--border); }
+details.advanced .ad-body { padding: 0.9rem; }
+
+/* Slider */
+.slider-row { display: flex; align-items: center; gap: 0.5rem; }
+.slider-row input[type=range] { flex: 1; padding: 0; height: 28px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; }
+.slider-row .val { min-width: 42px; text-align: right; font-size: 0.78rem; color: var(--primary); font-variant-numeric: tabular-nums; }
+
+.field { margin-bottom: 0.7rem; }
+.field label { display: block; font-size: 0.78rem; color: var(--text-dim); margin-bottom: 0.3rem; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.7rem; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.7rem; }
+@media (max-width: 720px) { .grid-3, .grid-4 { grid-template-columns: 1fr 1fr; } }
+
+/* ========== Lines (Step 2) ========== */
+.markers-toolbar { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.6rem; padding: 0.5rem; background: var(--bg-input); border-radius: 6px; border: 1px solid var(--border); }
+.markers-toolbar small { color: var(--text-faint); font-size: 0.74rem; margin-right: 0.4rem; align-self: center; }
+.markers-toolbar button { padding: 0.2rem 0.55rem; font-size: 0.72rem; background: var(--bg-card); color: var(--text-dim); border: 1px solid var(--border); border-radius: 12px; }
+.markers-toolbar button:hover { background: var(--primary-bg); color: white; border-color: var(--primary-bg); }
+
+.line-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.line-table th { text-align: left; padding: 0.4rem 0.5rem; font-size: 0.7rem; color: var(--text-faint); border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+.line-table td { padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.line-table tr:hover { background: var(--bg-hover); }
+.line-table tr.playing { background: rgba(92, 107, 192, 0.15); }
+.line-table tr.error { background: rgba(239, 83, 80, 0.12); }
+.line-table .col-num { width: 28px; color: var(--text-faint); }
+.line-table .col-mode { width: 90px; }
+.line-table .col-voice { width: 200px; }
+.line-table .col-lang { width: 130px; }
+.line-table .col-actions { width: 36px; text-align: right; }
+.line-table select, .line-table input[type=text] { padding: 0.35rem 0.5rem; font-size: 0.82rem; }
+.line-table .btn-del { background: none; border: none; color: var(--text-faint); cursor: pointer; font-size: 1rem; padding: 0.2rem 0.4rem; }
+.line-table .btn-del:hover { color: var(--red); }
+
+.lines-actions { display: flex; gap: 0.4rem; margin-top: 0.5rem; flex-wrap: wrap; }
+
+/* ========== Generate (Step 3) ========== */
+.generate-row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.generate-row .btn-primary { padding: 0.7rem 1.5rem; font-size: 0.95rem; min-width: 200px; }
+.kbd { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 3px; padding: 1px 5px; font-family: 'Consolas',monospace; font-size: 0.72rem; color: var(--text-dim); }
+#progress { margin-top: 0.7rem; font-size: 0.83rem; color: var(--primary); }
+#progress.error { color: var(--red); }
+
+.result-item { display: flex; align-items: center; gap: 0.7rem; padding: 0.55rem 0; border-bottom: 1px solid var(--border); }
+.result-item .ri-label { min-width: 200px; font-size: 0.78rem; color: var(--text-dim); }
+.result-item .ri-label b { color: var(--text); }
+.result-item .ri-label small { color: var(--text-faint); font-size: 0.7rem; display: block; margin-top: 0.1rem; }
+.result-item audio { flex: 1; height: 32px; }
+.result-item .btn-dl { padding: 0.3rem 0.6rem; font-size: 0.72rem; }
+
+/* ========== Modals ========== */
+.modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 999; align-items: center; justify-content: center; padding: 1rem; }
+.modal.show { display: flex; }
+.modal-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.4rem; width: 100%; max-width: 720px; max-height: 90vh; overflow-y: auto; }
+.modal-box h3 { color: var(--primary); margin-bottom: 0.9rem; font-size: 1.1rem; }
+.modal-box .field { margin-bottom: 0.8rem; }
+.modal-actions { display: flex; gap: 0.5rem; margin-top: 1rem; justify-content: flex-end; }
+
+/* ========== Reference (collapsed at bottom) ========== */
+.reference { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 0; margin-bottom: 1.5rem; }
+.reference > summary { padding: 0.9rem 1.2rem; cursor: pointer; font-weight: 600; color: var(--text-dim); list-style: none; user-select: none; display: flex; align-items: center; gap: 0.5rem; }
+.reference > summary::-webkit-details-marker { display: none; }
+.reference > summary::after { content: '▼'; margin-left: auto; font-size: 0.7rem; transition: transform 0.2s; }
+.reference[open] > summary::after { transform: rotate(180deg); }
+.reference > summary:hover { color: var(--text); }
+.reference .ref-body { padding: 0 1.2rem 1.2rem 1.2rem; font-size: 0.83rem; color: var(--text-dim); line-height: 1.6; }
+.reference table { width: 100%; border-collapse: collapse; margin: 0.5rem 0; }
+.reference th, .reference td { padding: 0.35rem 0.6rem; border: 1px solid var(--border); text-align: left; vertical-align: top; }
+.reference th { background: var(--bg-input); color: var(--text); font-weight: 600; font-size: 0.78rem; }
+.reference code { background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 3px; font-size: 0.78rem; color: #e8c97a; }
+.reference h4 { color: var(--text); font-size: 0.92rem; margin-top: 1rem; margin-bottom: 0.4rem; }
+
+/* ========== Misc ========== */
+.toast { position: fixed; bottom: 1.2rem; right: 1.2rem; background: var(--bg-card); color: var(--text); padding: 0.7rem 1rem; border-radius: 8px; font-size: 0.85rem; z-index: 1000; opacity: 0; transition: opacity 0.2s; border: 1px solid var(--border); box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
+.toast.show { opacity: 1; }
+.toast.error { background: var(--red); border-color: var(--red); color: white; }
+.toast.success { border-left: 3px solid var(--green); }
+
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- ============== HEADER ============== -->
+  <div class="header">
+    <h1>🎙️ OmniVoice TTS <span class="by">k2-fsa · 646 langs</span></h1>
+    <p class="tagline">Local zero-shot text-to-speech · GPU accelerated · Voice cloning + voice design</p>
+    <div class="status">
+      <span class="dot disconnected" id="statusDot"></span>
+      <span id="statusText">Connecting…</span>
+      <span id="serverInfo" style="color:var(--text-faint)"></span>
+    </div>
+  </div>
+
+  <!-- ============== ONBOARDING ============== -->
+  <details class="onboarding" open id="onboarding">
+    <summary>👋 Quick start guide — 3 steps</summary>
+    <div class="body">
+      <p>OmniVoice is a <b>zero-shot TTS</b> — there's no fixed catalogue like "F1, F2…". Use it in 3 steps:</p>
+      <div class="onboarding-steps">
+        <div class="onboarding-step">
+          <span class="num">1</span><b>Pick a voice (mode)</b>
+          <p style="margin-top:0.4rem;">Choose one of three: <b>Auto</b> (random voice), <b>Clone</b> (pick from gallery or upload), <b>Design</b> (describe attributes).</p>
+          <small>New here? Switch to Clone, open 🇻🇳 Vietnamese, click ▶ to preview, then click a voice to select it.</small>
+        </div>
+        <div class="onboarding-step">
+          <span class="num">2</span><b>Type your text</b>
+          <p style="margin-top:0.4rem;">Each line = one audio file. Insert markers like <code>[laughter]</code>, <code>[sigh]</code>… from the toolbar.</p>
+          <small>Each line can override mode/voice/lang individually — useful for dialogue.</small>
+        </div>
+        <div class="onboarding-step">
+          <span class="num">3</span><b>Press Convert All</b>
+          <p style="margin-top:0.4rem;">Audio plays automatically in order. Download per file or click <b>Download all (zip)</b>.</p>
+          <small>Shortcut: <span class="kbd">Ctrl</span> + <span class="kbd">Enter</span></small>
+        </div>
+      </div>
+      <p style="margin-top:0.7rem;color:var(--text-faint);font-size:0.78rem;">Close this panel once you're familiar with the UI — it'll stay collapsed (saved in localStorage).</p>
+    </div>
+  </details>
+
+  <!-- ============== STEP 1: PICK A VOICE ============== -->
+  <section class="step-section" id="step1">
+    <div class="step-header">
+      <span class="step-num">1</span>
+      <h2>Pick how to source the voice</h2>
+      <span class="hint" id="step1Hint">Auto Voice (default)</span>
+    </div>
+
+    <!-- Mode cards -->
+    <div class="mode-cards" id="modeCards">
+      <div class="mode-card active" data-mode="auto">
+        <div class="mc-icon">🎲</div>
+        <div class="mc-title">Auto Voice</div>
+        <div class="mc-desc">Model picks at random<br>Different every run</div>
+      </div>
+      <div class="mode-card" data-mode="clone">
+        <div class="mc-icon">🧬</div>
+        <div class="mc-title">Voice Clone</div>
+        <div class="mc-desc">Pick from gallery or upload<br><b>Consistent</b> across runs</div>
+      </div>
+      <div class="mode-card" data-mode="design">
+        <div class="mc-icon">🎨</div>
+        <div class="mc-title">Voice Design</div>
+        <div class="mc-desc">Describe gender, age, accent…<br>Best for EN/ZH</div>
+      </div>
+    </div>
+
+    <!-- AUTO MODE -->
+    <div class="mode-content active" id="modeAuto">
+      <div class="mode-banner">
+        🎲 <b>Auto Voice</b> — no setup needed, just type text in Step 2 and press Convert.
+        Each run produces a <b>different</b> voice. Good for quick tests or when you want variety.
+        To lock the voice between runs, switch to <b>Clone</b> 👆 and pick one from the gallery below.
+      </div>
+    </div>
+
+    <!-- CLONE MODE -->
+    <div class="mode-content" id="modeClone">
+      <div class="mode-banner">
+        🧬 <b>Voice Clone</b> — pick a voice from the gallery below (click <b>▶</b> to preview, click the tile to select),
+        or upload your own reference audio (3–10s WAV/MP3). Same profile = same voice every time.
+      </div>
+    </div>
+
+    <!-- DESIGN MODE -->
+    <div class="mode-content" id="modeDesign">
+      <div class="mode-banner">
+        🎨 <b>Voice Design</b> — describe the voice with attributes (gender, age, pitch, accent, dialect).
+        The model is best-trained for <b>English and Chinese</b>; other languages (including Vietnamese)
+        may be unstable — use Clone with the <code>xl_*</code> gallery profiles below instead.
+      </div>
+      <div class="design-grid" id="designAttrs"></div>
+      <div class="instruct-preview" id="instructPreview">
+        <span class="label">instruct →</span> <span id="instructText">(no attributes selected)</span>
+      </div>
+      <details class="advanced">
+        <summary>Custom instruct (free text — overrides the dropdowns above)</summary>
+        <div class="ad-body">
+          <input type="text" id="defInstruct" placeholder="e.g. female, young adult, high pitch, british accent">
+        </div>
+      </details>
+    </div>
+
+    <!-- ============== VOICE GALLERY (always visible) ============== -->
+    <div class="gallery-wrapper">
+      <div class="gallery-header">
+        <h3>🎤 Voice Gallery</h3>
+        <small>Click <b>▶</b> to preview · click a voice to select it (auto-switches to Clone mode)</small>
+      </div>
+
+      <div class="gallery-toolbar">
+        <input type="search" id="voiceSearch" placeholder="🔍 Search by name / language / note…">
+        <button class="filter-btn active" data-gfilter="all">All</button>
+        <button class="filter-btn" data-gfilter="female">👩 Female</button>
+        <button class="filter-btn" data-gfilter="male">👨 Male</button>
+        <button class="filter-btn" data-gfilter="neutral">⚪ Other</button>
+        <button class="btn-secondary btn-small" id="btnUploadVoice" style="margin-left:auto;">+ Upload your own</button>
+      </div>
+
+      <div id="voiceGallery"></div>
+
+      <div class="gallery-actions">
+        <span>💡 Selected:</span>
+        <span id="selectedVoiceName" style="color:var(--primary);font-weight:600;">— none —</span>
+        <span style="margin-left:auto;color:var(--text-faint);">Tip: add more voices? Run <code>python tool/build_voice_gallery.py --languages vi</code></span>
+      </div>
+    </div>
+
+    <!-- Common: language + speed -->
+    <details class="advanced" open>
+      <summary>Language + speed</summary>
+      <div class="ad-body">
+        <div class="grid-3">
+          <div class="field">
+            <label>Language <small>(of the text — not the voice)</small></label>
+            <select id="defLang"></select>
+          </div>
+          <div class="field">
+            <label>Speed <span class="val" id="speedVal">1.00x</span></label>
+            <div class="slider-row"><input type="range" id="defSpeed" min="0.5" max="1.5" step="0.05" value="1.0"></div>
+          </div>
+          <div class="field">
+            <label>Inference steps <span class="val" id="numStepVal">32</span> <small>(low = fast, high = better quality)</small></label>
+            <div class="slider-row"><input type="range" id="defNumStep" min="4" max="64" step="1" value="32"></div>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <details class="advanced">
+      <summary>🔬 Advanced parameters (CFG scale, t_shift, temperatures, denoise…)</summary>
+      <div class="ad-body">
+        <div class="grid-4">
+          <div class="field">
+            <label>Guidance scale (CFG) <span class="val" id="gsVal">2.0</span></label>
+            <div class="slider-row"><input type="range" id="defGS" min="0" max="4" step="0.1" value="2.0"></div>
+          </div>
+          <div class="field">
+            <label>t_shift <span class="val" id="tsVal">0.10</span></label>
+            <div class="slider-row"><input type="range" id="defTS" min="0" max="1" step="0.05" value="0.1"></div>
+          </div>
+          <div class="field">
+            <label>Layer penalty <span class="val" id="lpVal">5.0</span></label>
+            <div class="slider-row"><input type="range" id="defLP" min="0" max="20" step="0.5" value="5"></div>
+          </div>
+          <div class="field">
+            <label>Position temp <span class="val" id="ptVal">5.0</span></label>
+            <div class="slider-row"><input type="range" id="defPT" min="0" max="20" step="0.5" value="5"></div>
+          </div>
+          <div class="field">
+            <label>Class temp <span class="val" id="ctVal">0.0</span></label>
+            <div class="slider-row"><input type="range" id="defCT" min="0" max="2" step="0.05" value="0"></div>
+          </div>
+          <div class="field">
+            <label>Fixed duration (s) <small>(blank = auto)</small></label>
+            <input type="number" id="defDuration" min="0.5" max="60" step="0.5" placeholder="auto">
+          </div>
+          <div class="field">
+            <label>Audio chunk duration (s)</label>
+            <input type="number" id="defAcd" min="5" max="30" step="1" value="15">
+          </div>
+          <div class="field">
+            <label>Chunk threshold (s)</label>
+            <input type="number" id="defAct" min="5" max="60" step="1" value="30">
+          </div>
+        </div>
+        <div style="margin-top:0.7rem;display:flex;gap:1.5rem;flex-wrap:wrap;font-size:0.83rem;">
+          <label><input type="checkbox" id="defDenoise" checked> Denoise</label>
+          <label><input type="checkbox" id="defPrep" checked> Preprocess prompt</label>
+          <label><input type="checkbox" id="defPost" checked> Postprocess output</label>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============== STEP 2: WRITE ============== -->
+  <section class="step-section" id="step2">
+    <div class="step-header">
+      <span class="step-num">2</span>
+      <h2>Type your dialogue</h2>
+      <span class="hint">Each line = one audio file</span>
+    </div>
+
+    <div class="markers-toolbar">
+      <small>Insert marker:</small>
+      <span id="markerToolbar"></span>
+    </div>
+
+    <table class="line-table">
+      <thead><tr>
+        <th class="col-num">#</th>
+        <th class="col-mode">Mode</th>
+        <th class="col-voice">Voice / Instruct</th>
+        <th class="col-lang">Language</th>
+        <th class="col-text">Text</th>
+        <th class="col-actions"></th>
+      </tr></thead>
+      <tbody id="lineBody"></tbody>
+    </table>
+
+    <div class="lines-actions">
+      <button class="btn-secondary btn-small" id="btnAdd">+ Add line</button>
+      <button class="btn-secondary btn-small" id="btnImport">📥 Import file</button>
+      <button class="btn-secondary btn-small" id="btnPaste">📋 Paste multi-line</button>
+      <button class="btn-secondary btn-small" id="btnClear">🗑 Clear all</button>
+    </div>
+  </section>
+
+  <!-- ============== STEP 3: GENERATE ============== -->
+  <section class="step-section" id="step3">
+    <div class="step-header">
+      <span class="step-num">3</span>
+      <h2>Generate audio</h2>
+      <span class="hint">Auto-plays in order + downloadable</span>
+    </div>
+    <div class="generate-row">
+      <button class="btn-primary" id="btnPlayAll" disabled>▶ Convert All <span class="kbd">Ctrl+Enter</span></button>
+      <button class="btn-secondary" id="btnDownloadAll" disabled>⬇ Download all (zip)</button>
+      <button class="btn-stop" id="btnStop" disabled>⏹ Stop</button>
+    </div>
+    <div id="progress"></div>
+    <div id="results"></div>
+  </section>
+
+  <!-- ============== REFERENCE ============== -->
+  <details class="reference">
+    <summary>📚 Reference — Voice Design attributes, markers, generation params</summary>
+    <div class="ref-body">
+
+      <h4>🎨 Voice Design — full attribute list</h4>
+      <p>Combine multiple attributes (one per category, separated by commas). Voice Design works best for <b>EN</b> and <b>ZH</b>.</p>
+      <div id="designRef"></div>
+
+      <h4>🎵 Non-verbal markers + pronunciation control</h4>
+      <table>
+        <tr><th>Type</th><th>Syntax</th><th>Effect</th></tr>
+        <tr><td>Non-verbal</td><td><code>[laughter]</code> <code>[sigh]</code> <code>[question-en]</code>…</td><td>Laughter, sighs, question intonation, etc.</td></tr>
+        <tr><td>Pinyin (中文)</td><td><code>这批货物打ZHE2出售</code></td><td>Inline pinyin + tone override</td></tr>
+        <tr><td>CMU (English)</td><td><code>plays the [B EY1 S] guitar</code></td><td>ARPAbet phoneme override</td></tr>
+        <tr><td>Punctuation</td><td><code>,</code> <code>.</code> <code>!</code> <code>?</code> <code>...</code></td><td>Short / long pause / question rising tone</td></tr>
+      </table>
+
+      <h4>⚙️ Generation parameter details</h4>
+      <table>
+        <tr><th>Parameter</th><th>Default</th><th>Description</th></tr>
+        <tr><td><code>num_step</code></td><td>32</td><td>Diffusion steps. Higher = better quality + slower. Use 16 for fast preview.</td></tr>
+        <tr><td><code>guidance_scale</code></td><td>2.0</td><td>CFG strength. Higher follows instruct/ref more strictly but may distort.</td></tr>
+        <tr><td><code>t_shift</code></td><td>0.1</td><td>Time-step shift for the noise schedule.</td></tr>
+        <tr><td><code>position_temperature</code></td><td>5.0</td><td>Mask-position randomness. 0 = greedy.</td></tr>
+        <tr><td><code>class_temperature</code></td><td>0.0</td><td>Token-sampling randomness. 0 = greedy.</td></tr>
+        <tr><td><code>layer_penalty_factor</code></td><td>5.0</td><td>Penalty on deeper codebook layers (encourages low layers first).</td></tr>
+        <tr><td><code>speed</code></td><td>1.0</td><td>Speed factor. >1 faster, &lt;1 slower.</td></tr>
+        <tr><td><code>duration</code></td><td>auto</td><td>Fixed output duration (s). If set, overrides <code>speed</code>.</td></tr>
+        <tr><td><code>denoise</code></td><td>true</td><td>Prepend <code>&lt;|denoise|&gt;</code> token → cleaner audio.</td></tr>
+        <tr><td><code>preprocess_prompt</code></td><td>true</td><td>Trim silence + normalize reference audio.</td></tr>
+        <tr><td><code>postprocess_output</code></td><td>true</td><td>Trim trailing silence from output.</td></tr>
+      </table>
+
+      <h4>💡 Quick line format (when pasting multi-line)</h4>
+      <table>
+        <tr><th>Format</th><th>Meaning</th></tr>
+        <tr><td><code>vi: Hello</code></td><td>Specify language</td></tr>
+        <tr><td><code>gallery_vi_xl_female_young: Hello</code></td><td>Specify voice profile (auto-switches to Clone mode)</td></tr>
+        <tr><td><code>alice|en: Hello</code></td><td>Voice + language</td></tr>
+      </table>
+
+    </div>
+  </details>
+</div>
+
+<!-- ============== UPLOAD MODAL ============== -->
+<div id="uploadModal" class="modal"><div class="modal-box">
+  <h3>👤 Upload reference voice</h3>
+  <p style="color:var(--text-dim);font-size:0.83rem;margin-bottom:1rem;">Audio is saved to <code>tool/voice_prompts/</code> and persists across sessions.</p>
+  <div class="grid-2">
+    <div class="field"><label>Profile name <small>(letters, digits, _, -)</small></label>
+      <input type="text" id="uplName" placeholder="e.g. my_voice"></div>
+    <div class="field"><label>Language (optional)</label>
+      <select id="uplLang"></select></div>
+  </div>
+  <div class="field">
+    <label>Audio file <small>(WAV/MP3/FLAC/OGG/M4A — 3–10s works best)</small></label>
+    <input type="file" id="uplFile" accept=".wav,.mp3,.flac,.ogg,.m4a">
+  </div>
+  <div class="field">
+    <label>Audio transcript <small>(leave empty for Whisper auto-transcribe — requires server without <code>--no-asr</code>)</small></label>
+    <textarea id="uplRefText" rows="3" placeholder="What is being said in the audio file."></textarea>
+  </div>
+  <div class="field">
+    <label>Note (optional)</label>
+    <input type="text" id="uplNote" placeholder="e.g. Female, young adult, energetic">
+  </div>
+  <div class="modal-actions">
+    <button class="btn-secondary" id="uplCancel">Cancel</button>
+    <button class="btn-primary" id="uplConfirm">Save profile</button>
+  </div>
+</div></div>
+
+<!-- ============== IMPORT MODAL ============== -->
+<div id="importModal" class="modal"><div class="modal-box">
+  <h3>📥 Import dialogue</h3>
+  <div class="field">
+    <label>Upload a file</label>
+    <input type="file" id="importFile" accept=".xlsx,.csv,.txt,.md">
+    <small style="color:var(--text-faint);">Supports: .xlsx · .csv · .txt · .md (markdown table)</small>
+  </div>
+  <div class="field">
+    <label>Or paste content</label>
+    <textarea id="importText" rows="9" style="font-family:'Consolas',monospace;font-size:0.78rem;" placeholder="Plain text (one entry per line)
+
+Markdown table:
+| Voice | Lang | Text |
+|-------|------|------|
+| alice | en   | Hello! |
+
+Or CSV:
+voice,lang,text
+alice,en,Hello world"></textarea>
+  </div>
+  <div class="modal-actions">
+    <button class="btn-secondary" id="importCancel">Cancel</button>
+    <button class="btn-primary" id="importConfirm">Import</button>
+  </div>
+</div></div>
+
+<div id="toast" class="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script>
+// ============================================================================
+// Config from server (filled at handshake)
+// ============================================================================
+let SERVER = {
+  languages: [],
+  voices:    [],
+  voice_design: {},
+  nonverbal_markers: [],
+  modes: ["auto", "clone", "design"],
+  sample_rate: 24000,
+};
+const POPULAR_LANGS = ["English","Chinese","Vietnamese","Japanese","Korean","French","German","Spanish","Russian","Portuguese","Italian","Arabic","Hindi","Thai","Indonesian"];
+const FLAG_BY_LANG = {
+  "English":"🇬🇧","Chinese":"🇨🇳","Vietnamese":"🇻🇳","Japanese":"🇯🇵","Korean":"🇰🇷",
+  "French":"🇫🇷","German":"🇩🇪","Spanish":"🇪🇸","Italian":"🇮🇹","Portuguese":"🇵🇹",
+  "Russian":"🇷🇺","Indonesian":"🇮🇩","Thai":"🇹🇭","Standard Arabic":"🇸🇦","Hindi":"🇮🇳",
+  "Turkish":"🇹🇷","Dutch":"🇳🇱","Polish":"🇵🇱","Ukrainian":"🇺🇦","Swedish":"🇸🇪","Unknown":"🌐",
+};
+
+// Determine gender + age from a profile name/note for grouping
+function inferVoiceMeta(v) {
+  const n = (v.name + " " + (v.note || "")).toLowerCase();
+  let gender = "neutral", age = "adult", emoji = "🗣️";
+  if (n.includes("female") || n.includes("女") || n.includes("nữ")) gender = "female";
+  else if (n.includes("male") || n.includes("男") || n.includes("nam")) gender = "male";
+
+  if (n.includes("child") || n.includes("儿童") || n.includes("trẻ em") || n.includes("bé")) age = "child";
+  else if (n.includes("teen") || n.includes("少年") || n.includes("thiếu")) age = "teen";
+  else if (n.includes("young") || n.includes("青年") || n.includes("trẻ")) age = "young";
+  else if (n.includes("middle") || n.includes("中年") || n.includes("trung niên")) age = "middle";
+  else if (n.includes("elderly") || n.includes("老年") || n.includes("grandma") || n.includes("grandpa") || n.includes("già")) age = "elderly";
+
+  const emojiMap = {
+    "female-child":"👧","female-teen":"🧒","female-young":"👩","female-middle":"👩‍🦰","female-elderly":"👵","female-adult":"👩",
+    "male-child":"👦","male-teen":"🧒","male-young":"👨","male-middle":"👨‍🦰","male-elderly":"👴","male-adult":"👨",
+    "neutral-adult":"🗣️","neutral-child":"🧒","neutral-teen":"🧒","neutral-young":"🗣️","neutral-middle":"🗣️","neutral-elderly":"🗣️",
+  };
+  emoji = emojiMap[`${gender}-${age}`] || "🗣️";
+  if (n.includes("whisper")) emoji = "🤫";
+  return { gender, age, emoji };
+}
+
+function ageOrder(a) { return ["child","teen","young","adult","middle","elderly"].indexOf(a); }
+
+// ============================================================================
+// State
+// ============================================================================
+let ws = null, wsReady = false, stopRequested = false, isPlaying = false;
+let lines = [];
+let allBlobs = [];
+let nextRequestId = 1;
+const pendingRequests = new Map();
+let currentMode = "auto";
+let currentGenderFilter = "all";
+let focusedRowIdx = 0;
+
+// ============================================================================
+// Helpers
+// ============================================================================
+const $ = (id) => document.getElementById(id);
+
+// Detect server origin. If page loaded from http(s), use same origin.
+// If loaded via file:// (or any non-http origin), fall back to default port.
+function serverOrigin() {
+  if (location.protocol.startsWith("http")) return location.origin;
+  return "http://127.0.0.1:8765";
+}
+function apiURL(path) { return serverOrigin() + path; }
+
+function toast(msg, type="info") {
+  const t = $("toast");
+  t.textContent = msg;
+  t.className = "toast show" + (type !== "info" ? " " + type : "");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove("show"), 2500);
+}
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+function safeFilename(s) { return String(s).replace(/[^A-Za-z0-9_\-]+/g, "_").slice(0, 30); }
+
+// ============================================================================
+// Mode tabs
+// ============================================================================
+$("modeCards").querySelectorAll(".mode-card").forEach(card => {
+  card.onclick = () => switchMode(card.dataset.mode);
+});
+function switchMode(mode) {
+  currentMode = mode;
+  $("modeCards").querySelectorAll(".mode-card").forEach(c => c.classList.toggle("active", c.dataset.mode === mode));
+  ["auto","clone","design"].forEach(m => $("mode" + m[0].toUpperCase() + m.slice(1)).classList.toggle("active", m === mode));
+  $("step1Hint").textContent = ({auto:"Auto Voice — random voice", clone:"Voice Clone — pick from gallery", design:"Voice Design — describe attributes"})[mode];
+}
+
+// ============================================================================
+// Build language dropdown
+// ============================================================================
+function buildLangOptions(selectEl, includeAuto=true) {
+  selectEl.innerHTML = "";
+  if (includeAuto) selectEl.add(new Option("Auto detect", ""));
+  const popular = SERVER.languages.filter(l => POPULAR_LANGS.includes(l.name));
+  if (popular.length) {
+    const og = document.createElement("optgroup");
+    og.label = "Popular";
+    popular.forEach(l => og.appendChild(new Option(`${l.name} (${l.id})`, l.name)));
+    selectEl.appendChild(og);
+  }
+  const og2 = document.createElement("optgroup");
+  og2.label = `All ${SERVER.languages.length} languages`;
+  SERVER.languages.forEach(l => og2.appendChild(new Option(`${l.name} (${l.id})`, l.name)));
+  selectEl.appendChild(og2);
+}
+
+// ============================================================================
+// Voice Gallery
+// ============================================================================
+function refreshVoiceList() {
+  const wrap = $("voiceGallery");
+  if (!wrap) return;
+  wrap.innerHTML = "";
+  const filter = ($("voiceSearch")?.value || "").toLowerCase().trim();
+
+  if (!SERVER.voices.length) {
+    wrap.innerHTML = `<div class="gallery-empty">
+      <p style="font-size:1rem;margin-bottom:0.5rem;">📭 Voice library is empty</p>
+      <p>Run this command to pre-generate 20 Vietnamese voices + 13 EN + 12 ZH:</p>
+      <p style="margin-top:0.5rem;"><code>python tool/build_voice_gallery.py --languages vi,en,zh --xlingual</code></p>
+      <p style="margin-top:0.5rem;">Or click <b>+ Upload your own</b> to add a voice from a file.</p>
+    </div>`;
+    return;
+  }
+
+  // Group by language
+  const byLang = {};
+  SERVER.voices.forEach(v => {
+    const meta = inferVoiceMeta(v);
+    v._meta = meta;
+    if (filter && !(v.name + " " + (v.language || "") + " " + (v.note || "")).toLowerCase().includes(filter)) return;
+    if (currentGenderFilter !== "all" && meta.gender !== currentGenderFilter) return;
+    const lang = v.language || "Unknown";
+    (byLang[lang] = byLang[lang] || []).push(v);
+  });
+
+  const langOrder = Object.keys(byLang).sort((a, b) => {
+    if (a === "Vietnamese") return -1;
+    if (b === "Vietnamese") return 1;
+    return byLang[b].length - byLang[a].length;
+  });
+
+  if (langOrder.length === 0) {
+    wrap.innerHTML = `<div class="gallery-empty">No voices match the filter.</div>`;
+    return;
+  }
+
+  langOrder.forEach((lang, idx) => {
+    const det = document.createElement("details");
+    det.className = "lang-section";
+    det.open = idx === 0 || langOrder.length <= 3;
+
+    const flag = FLAG_BY_LANG[lang] || "🌐";
+    const sum = document.createElement("summary");
+    sum.innerHTML = `<span class="lang-flag">${flag}</span><span class="lang-name">${escapeHtml(lang)}</span><span class="lang-count">— ${byLang[lang].length} voices</span>`;
+    det.appendChild(sum);
+
+    const body = document.createElement("div");
+    body.className = "lang-body";
+
+    // Sub-group by gender
+    const byGender = { female: [], male: [], neutral: [] };
+    byLang[lang].forEach(v => byGender[v._meta.gender].push(v));
+    // Sort within each gender by age
+    Object.values(byGender).forEach(arr => arr.sort((a, b) => ageOrder(a._meta.age) - ageOrder(b._meta.age)));
+
+    [["female", "👩 Female", "Female"], ["male", "👨 Male", "Male"], ["neutral", "⚪ Other", "Neutral"]].forEach(([k, label]) => {
+      if (!byGender[k].length) return;
+      const grp = document.createElement("div");
+      grp.className = "gender-group";
+      grp.innerHTML = `<div class="gender-label"><span class="gl-emoji"></span>${label}<span class="gl-count">${byGender[k].length}</span></div>`;
+      const grid = document.createElement("div");
+      grid.className = "voice-grid";
+      byGender[k].forEach(v => grid.appendChild(buildVoiceTile(v)));
+      grp.appendChild(grid);
+      body.appendChild(grp);
+    });
+
+    det.appendChild(body);
+    wrap.appendChild(det);
+  });
+
+  // Update default-voice select for "Clone" mode (used by buildRequest)
+  refreshDefVoiceSelect();
+  updateSelectedVoiceLabel();
+}
+
+function refreshDefVoiceSelect() {
+  let sel = document.getElementById("defVoiceHidden");
+  if (!sel) {
+    sel = document.createElement("select");
+    sel.id = "defVoiceHidden";
+    sel.style.display = "none";
+    document.body.appendChild(sel);
+  }
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— none —</option>';
+  SERVER.voices.forEach(v => sel.add(new Option(v.name, v.name)));
+  sel.value = cur;
+  // Compat: alias for buildRequest()
+  window._defVoice = sel;
+}
+
+function updateSelectedVoiceLabel() {
+  const cur = (window._defVoice?.value || "");
+  const v = SERVER.voices.find(x => x.name === cur);
+  const lbl = $("selectedVoiceName");
+  if (!lbl) return;
+  if (!v) { lbl.textContent = "— none —"; lbl.style.color = "var(--text-faint)"; }
+  else { lbl.textContent = `${inferVoiceMeta(v).emoji} ${v.name}${v.note ? " · " + v.note : ""}`; lbl.style.color = "var(--primary)"; }
+}
+
+function buildVoiceTile(v) {
+  const tile = document.createElement("div");
+  tile.className = "voice-tile";
+  tile.dataset.name = v.name;
+  if (window._defVoice?.value === v.name) tile.classList.add("selected");
+
+  const meta = v._meta || inferVoiceMeta(v);
+
+  const emojiSpan = document.createElement("span");
+  emojiSpan.className = "vt-emoji";
+  emojiSpan.textContent = meta.emoji;
+  tile.appendChild(emojiSpan);
+
+  const info = document.createElement("div");
+  info.className = "vt-info";
+  // Strip "gallery_xx_" prefix from displayed name
+  const shortName = v.name.replace(/^gallery_[a-z]{2,3}_(xl_)?/, "").replace(/_/g, " ");
+  info.innerHTML = `<div class="vt-label">${escapeHtml(shortName || v.name)}</div>` +
+                   (v.note ? `<div class="vt-sub">${escapeHtml(v.note)}</div>` : "");
+  tile.appendChild(info);
+
+  const playBtn = document.createElement("button");
+  playBtn.className = "vt-play";
+  playBtn.title = "Preview voice";
+  playBtn.innerHTML = "▶";
+  playBtn.onclick = (e) => { e.stopPropagation(); previewVoice(v.name, playBtn); };
+  tile.appendChild(playBtn);
+
+  const del = document.createElement("button");
+  del.className = "vt-del";
+  del.innerHTML = "✕";
+  del.title = "Delete profile";
+  del.onclick = async (e) => {
+    e.stopPropagation();
+    if (!confirm(`Delete profile "${v.name}"?`)) return;
+    const r = await fetch(apiURL(`/api/voices/${encodeURIComponent(v.name)}`), {method: "DELETE"});
+    if (r.ok) { await refreshVoicesFromServer(); toast(`Deleted ${v.name}`, "success"); }
+  };
+  tile.appendChild(del);
+
+  tile.title = (v.ref_text || "no transcript") + (v.note ? `\n[${v.note}]` : "") + "\nClick to select, ▶ to preview";
+  tile.onclick = (e) => {
+    if (e.target === playBtn || e.target === del) return;
+    useVoice(v.name);
+  };
+  return tile;
+}
+
+let _previewAudio = null, _previewBtn = null, _previewBlobUrl = null;
+async function previewVoice(name, btn) {
+  // Toggle off if clicking the currently-playing button
+  if (_previewAudio && !_previewAudio.paused) {
+    _previewAudio.pause();
+    _previewAudio.currentTime = 0;
+    if (_previewBtn) { _previewBtn.classList.remove("playing"); _previewBtn.innerHTML = "▶"; }
+    if (_previewBtn === btn) { _previewBtn = null; return; }
+  }
+
+  btn.classList.add("playing");
+  btn.innerHTML = "■";
+
+  try {
+    const url = apiURL(`/api/voices/${encodeURIComponent(name)}/audio`);
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    const blob = await resp.blob();
+    if (_previewBlobUrl) { URL.revokeObjectURL(_previewBlobUrl); _previewBlobUrl = null; }
+    _previewBlobUrl = URL.createObjectURL(blob);
+
+    _previewAudio = new Audio();
+    _previewBtn = btn;
+    _previewAudio.onended = () => {
+      btn.classList.remove("playing"); btn.innerHTML = "▶";
+      if (_previewBlobUrl) { URL.revokeObjectURL(_previewBlobUrl); _previewBlobUrl = null; }
+    };
+    _previewAudio.onerror = () => {
+      console.error("audio err:", _previewAudio.error);
+      btn.classList.remove("playing"); btn.innerHTML = "▶";
+      toast("Preview failed: " + (_previewAudio.error?.message || "decode failed"), "error");
+    };
+    _previewAudio.src = _previewBlobUrl;
+    await _previewAudio.play();
+  } catch (e) {
+    console.error("preview failed:", e);
+    btn.classList.remove("playing"); btn.innerHTML = "▶";
+    toast("Preview failed: " + (e.message || e), "error");
+  }
+}
+
+function useVoice(name) {
+  if (window._defVoice) window._defVoice.value = name;
+  switchMode("clone");
+  document.querySelectorAll(".voice-tile").forEach(c => c.classList.toggle("selected", c.dataset.name === name));
+  updateSelectedVoiceLabel();
+  toast(`✓ Voice selected: ${name}`, "success");
+}
+
+async function refreshVoicesFromServer() {
+  try {
+    const r = await fetch(apiURL("/api/voices"));
+    const j = await r.json();
+    SERVER.voices = j.voices || [];
+    refreshVoiceList();
+  } catch (e) { console.error(e); }
+}
+
+// Search + gender filter
+$("voiceSearch")?.addEventListener("input", () => refreshVoiceList());
+document.querySelectorAll(".filter-btn").forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll(".filter-btn").forEach(b => b.classList.toggle("active", b === btn));
+    currentGenderFilter = btn.dataset.gfilter;
+    refreshVoiceList();
+  };
+});
+
+// ============================================================================
+// Voice Design panel
+// ============================================================================
+function buildDesignAttrs() {
+  const root = $("designAttrs");
+  root.innerHTML = "";
+  Object.entries(SERVER.voice_design || {}).forEach(([key, cat]) => {
+    const wrap = document.createElement("div");
+    wrap.className = "field";
+    const sel = document.createElement("select");
+    sel.dataset.designCat = key;
+    sel.add(new Option("— Auto —", ""));
+    cat.options.forEach(([en, zh]) => {
+      const value = key === "chinese_dialect" ? zh : en;
+      sel.add(new Option(`${en}${en !== zh ? " / " + zh : ""}`, value));
+    });
+    sel.onchange = updateInstructPreview;
+    wrap.innerHTML = `<label>${escapeHtml(cat.label)}${cat.note ? ` <small>${escapeHtml(cat.note)}</small>` : ""}</label>`;
+    wrap.appendChild(sel);
+    root.appendChild(wrap);
+  });
+  $("defInstruct").oninput = updateInstructPreview;
+  updateInstructPreview();
+}
+
+function updateInstructPreview() {
+  const parts = [];
+  $("designAttrs").querySelectorAll("select").forEach(s => { if (s.value) parts.push(s.value); });
+  const custom = $("defInstruct")?.value.trim() || "";
+  let final = custom || parts.join(", ");
+  if (custom && parts.length) final = custom;  // custom overrides
+  const txt = $("instructText");
+  if (final) { txt.textContent = `"${final}"`; txt.style.color = "var(--primary)"; }
+  else { txt.textContent = "(no attributes selected)"; txt.style.color = "var(--text-faint)"; }
+}
+
+function buildDesignReference() {
+  const wrap = $("designRef");
+  if (!wrap) return;
+  wrap.innerHTML = "";
+  const tbl = document.createElement("table");
+  tbl.innerHTML = "<tr><th>Category</th><th>English</th><th>中文</th></tr>";
+  Object.values(SERVER.voice_design || {}).forEach(cat => {
+    cat.options.forEach(([en, zh]) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${escapeHtml(cat.label)}</td><td><code>${escapeHtml(en)}</code></td><td><code>${escapeHtml(zh)}</code></td>`;
+      tbl.appendChild(tr);
+    });
+  });
+  wrap.appendChild(tbl);
+}
+
+// ============================================================================
+// Markers
+// ============================================================================
+function buildMarkers() {
+  const root = $("markerToolbar");
+  root.innerHTML = "";
+  SERVER.nonverbal_markers.forEach(m => {
+    const b = document.createElement("button");
+    b.textContent = m;
+    b.onclick = () => insertAtCurrentLine(m + " ");
+    root.appendChild(b);
+  });
+}
+
+function insertAtCurrentLine(snippet) {
+  const idx = focusedRowIdx;
+  if (idx == null || !lines[idx]) return;
+  const inp = $("lineBody").querySelectorAll('input.line-text')[idx];
+  if (!inp) return;
+  const start = inp.selectionStart || inp.value.length;
+  const end = inp.selectionEnd || inp.value.length;
+  inp.value = inp.value.slice(0, start) + snippet + inp.value.slice(end);
+  inp.dispatchEvent(new Event("input", { bubbles: true }));
+  inp.focus();
+  inp.setSelectionRange(start + snippet.length, start + snippet.length);
+}
+
+// ============================================================================
+// Slider value bindings
+// ============================================================================
+function bindSlider(rangeId, valId, fmt = (x) => Number(x).toFixed(2)) {
+  const r = $(rangeId), v = $(valId);
+  const upd = () => v.textContent = fmt(r.value);
+  r.oninput = upd; upd();
+}
+bindSlider("defSpeed", "speedVal", x => Number(x).toFixed(2) + "x");
+bindSlider("defNumStep", "numStepVal", x => x);
+bindSlider("defGS", "gsVal", x => Number(x).toFixed(1));
+bindSlider("defTS", "tsVal", x => Number(x).toFixed(2));
+bindSlider("defLP", "lpVal", x => Number(x).toFixed(1));
+bindSlider("defPT", "ptVal", x => Number(x).toFixed(1));
+bindSlider("defCT", "ctVal", x => Number(x).toFixed(2));
+
+// ============================================================================
+// Lines
+// ============================================================================
+function parseQuickLine(raw) {
+  const m = raw.match(/^([\w\-]+)(?:\|(\w{2,32}))?\s*:\s*(.+)/);
+  if (!m) return { text: raw };
+  const tok = m[1], lang = m[2] || null, txt = m[3];
+  const isVoice = SERVER.voices.some(v => v.name.toLowerCase() === tok.toLowerCase());
+  const langMatch = SERVER.languages.find(l =>
+    l.id.toLowerCase() === tok.toLowerCase() || l.name.toLowerCase() === tok.toLowerCase()
+  );
+  if (isVoice) return { voice: tok, lang, text: txt, mode: "clone" };
+  if (langMatch) return { lang: langMatch.name, text: txt };
+  return { text: raw };
+}
+
+function newLine(opts = {}) {
+  return {
+    mode:    opts.mode    || currentMode,
+    voice:   opts.voice   || (window._defVoice?.value) || "",
+    instruct:opts.instruct|| "",
+    lang:    opts.lang    || $("defLang")?.value || "",
+    text:    opts.text    || "",
+  };
+}
+function addLine(text = "", extras = {}) {
+  if (text && (extras.voice == null && extras.lang == null && extras.mode == null)) {
+    const parsed = parseQuickLine(text);
+    extras = { ...extras, ...parsed };
+    text = parsed.text;
+  }
+  lines.push(newLine({ text, ...extras }));
+  renderLines();
+  focusLine(lines.length - 1);
+}
+function removeLine(i) { lines.splice(i, 1); if (!lines.length) addLine(); else renderLines(); }
+function focusLine(i) {
+  setTimeout(() => {
+    const inp = $("lineBody").querySelectorAll('input.line-text')[i];
+    if (inp) { inp.focus(); focusedRowIdx = i; }
+  }, 0);
+}
+
+function renderLines() {
+  const tbody = $("lineBody");
+  tbody.innerHTML = "";
+  lines.forEach((line, i) => {
+    const tr = document.createElement("tr");
+    tr.dataset.idx = i;
+    const langOptions = ['<option value="">Auto</option>'].concat(
+      SERVER.languages.map(l => `<option value="${escapeHtml(l.name)}" ${l.name === line.lang ? "selected" : ""}>${escapeHtml(l.name)}</option>`)
+    ).join("");
+    const voiceOptions = ['<option value="">(profile…)</option>'].concat(
+      SERVER.voices.map(v => `<option value="${escapeHtml(v.name)}" ${v.name === line.voice ? "selected" : ""}>${escapeHtml(v.name)}</option>`)
+    ).join("");
+    let voiceCell = "";
+    if (line.mode === "clone") {
+      voiceCell = `<select class="line-voice-select" data-field="voice">${voiceOptions}</select>`;
+    } else if (line.mode === "design") {
+      voiceCell = `<input type="text" data-field="instruct" value="${escapeHtml(line.instruct || '')}" placeholder="(uses default from Step 1)">`;
+    } else {
+      voiceCell = `<input type="text" disabled value="(auto voice)">`;
+    }
+    tr.innerHTML = `
+      <td class="col-num">${i + 1}</td>
+      <td class="col-mode">
+        <select data-field="mode">
+          <option value="auto"   ${line.mode==='auto'?'selected':''}>🎲 Auto</option>
+          <option value="clone"  ${line.mode==='clone'?'selected':''}>🧬 Clone</option>
+          <option value="design" ${line.mode==='design'?'selected':''}>🎨 Design</option>
+        </select>
+      </td>
+      <td class="col-voice">${voiceCell}</td>
+      <td class="col-lang"><select data-field="lang">${langOptions}</select></td>
+      <td class="col-text"><input type="text" class="line-text" data-field="text" value="${escapeHtml(line.text)}" placeholder="Type text…"></td>
+      <td class="col-actions"><button class="btn-del" data-del="${i}" title="Delete line">✕</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll("select, input").forEach(el => {
+    el.addEventListener("change", e => {
+      const idx = +e.target.closest("tr").dataset.idx;
+      lines[idx][e.target.dataset.field] = e.target.value;
+      if (e.target.dataset.field === "mode") renderLines();
+    });
+    if (el.classList.contains("line-text")) {
+      el.addEventListener("input", e => {
+        const idx = +e.target.closest("tr").dataset.idx;
+        lines[idx].text = e.target.value;
+      });
+      el.addEventListener("focus", e => { focusedRowIdx = +e.target.closest("tr").dataset.idx; });
+      el.addEventListener("keydown", e => {
+        const idx = +e.target.closest("tr").dataset.idx;
+        if (e.key === "Enter" && !e.ctrlKey) {
+          e.preventDefault();
+          lines.splice(idx + 1, 0, newLine({ mode: lines[idx].mode, voice: lines[idx].voice, lang: lines[idx].lang }));
+          renderLines();
+          focusLine(idx + 1);
+        } else if (e.key === "Backspace" && e.target.value === "" && lines.length > 1) {
+          e.preventDefault();
+          removeLine(idx);
+          focusLine(Math.max(0, idx - 1));
+        }
+      });
+    }
+  });
+  tbody.querySelectorAll(".btn-del").forEach(btn => {
+    btn.onclick = () => removeLine(+btn.dataset.del);
+  });
+}
+
+// ============================================================================
+// Build request
+// ============================================================================
+function buildRequest(line, requestId) {
+  const r = {
+    request_id: requestId,
+    text: line.text,
+    lang: line.lang || $("defLang").value || null,
+    mode: line.mode,
+    speed: parseFloat($("defSpeed").value),
+    num_step: parseInt($("defNumStep").value, 10),
+    guidance_scale: parseFloat($("defGS").value),
+    t_shift: parseFloat($("defTS").value),
+    layer_penalty_factor: parseFloat($("defLP").value),
+    position_temperature: parseFloat($("defPT").value),
+    class_temperature: parseFloat($("defCT").value),
+    audio_chunk_duration: parseFloat($("defAcd").value),
+    audio_chunk_threshold: parseFloat($("defAct").value),
+    denoise: $("defDenoise").checked,
+    preprocess_prompt: $("defPrep").checked,
+    postprocess_output: $("defPost").checked,
+  };
+  const dur = parseFloat($("defDuration").value);
+  if (!isNaN(dur) && dur > 0) r.duration = dur;
+  if (line.mode === "clone") {
+    r.voice = line.voice || (window._defVoice?.value) || "";
+  } else if (line.mode === "design") {
+    let instruct = (line.instruct || "").trim();
+    if (!instruct) {
+      const parts = [];
+      $("designAttrs").querySelectorAll("select").forEach(s => { if (s.value) parts.push(s.value); });
+      const custom = $("defInstruct").value.trim();
+      if (custom) instruct = custom;
+      else instruct = parts.join(", ");
+    }
+    if (instruct) r.instruct = instruct;
+  }
+  return r;
+}
+
+// ============================================================================
+// WebSocket
+// ============================================================================
+function wsURL() {
+  const proto = location.protocol === "https:" ? "wss:" : "ws:";
+  if (location.host && location.protocol.startsWith("http")) return `${proto}//${location.host}/ws`;
+  return "ws://127.0.0.1:8765/ws";
+}
+
+function connect() {
+  ws = new WebSocket(wsURL());
+  ws.binaryType = "arraybuffer";
+
+  ws.onopen = () => {
+    wsReady = true;
+    $("statusDot").className = "dot connected";
+    $("statusText").textContent = "Connected";
+    $("btnPlayAll").disabled = false;
+  };
+  ws.onclose = () => {
+    wsReady = false;
+    $("statusDot").className = "dot disconnected";
+    $("statusText").textContent = "Disconnected — reconnecting…";
+    $("btnPlayAll").disabled = true;
+    setTimeout(connect, 2000);
+  };
+  ws.onerror = () => ws.close();
+
+  let pendingMeta = null;
+  ws.onmessage = (ev) => {
+    if (typeof ev.data === "string") {
+      const msg = JSON.parse(ev.data);
+      if (msg.status === "connected") {
+        SERVER = { ...SERVER, ...msg };
+        $("serverInfo").textContent = `· ${msg.device.toUpperCase()} · ${msg.languages.length} langs · ${msg.voices.length} voices`;
+        buildLangOptions($("defLang"));
+        $("defLang").value = "Vietnamese";
+        buildLangOptions($("uplLang"), false);
+        $("uplLang").value = "";
+        refreshDefVoiceSelect();
+        refreshVoiceList();
+        buildDesignAttrs();
+        buildMarkers();
+        buildDesignReference();
+        renderLines();
+      } else if (msg.type === "audio_meta") {
+        pendingMeta = msg;
+      } else if (msg.type === "error") {
+        const r = pendingRequests.get(msg.request_id);
+        pendingRequests.delete(msg.request_id);
+        if (r) r.reject(msg.message || "Error");
+        else toast("Server error: " + msg.message, "error");
+      }
+    } else {
+      if (!pendingMeta) return;
+      const meta = pendingMeta;
+      pendingMeta = null;
+      const r = pendingRequests.get(meta.request_id);
+      if (r) {
+        pendingRequests.delete(meta.request_id);
+        r.resolve({ blob: new Blob([ev.data], { type: "audio/wav" }), meta });
+      }
+    }
+  };
+}
+
+function synthesise(line) {
+  return new Promise((resolve, reject) => {
+    if (!wsReady) return reject("Not connected");
+    const id = nextRequestId++;
+    pendingRequests.set(id, { resolve, reject });
+    ws.send(JSON.stringify(buildRequest(line, id)));
+    setTimeout(() => {
+      if (pendingRequests.has(id)) {
+        pendingRequests.get(id).reject("Timeout (5 min)");
+        pendingRequests.delete(id);
+      }
+    }, 5 * 60 * 1000);
+  });
+}
+
+// ============================================================================
+// Convert all
+// ============================================================================
+$("btnPlayAll").onclick = async () => {
+  const valid = lines.filter(l => l.text.trim());
+  if (!valid.length || !wsReady) return;
+
+  isPlaying = true; stopRequested = false;
+  $("btnPlayAll").disabled = true; $("btnStop").disabled = false; $("btnDownloadAll").disabled = true;
+  $("statusDot").className = "dot busy";
+  $("results").innerHTML = "";
+  allBlobs = [];
+
+  for (let i = 0; i < valid.length; i++) {
+    if (stopRequested) break;
+    const line = valid[i];
+    const lineIdx = lines.indexOf(line);
+    $("progress").className = "";
+    $("progress").textContent = `🎵 Processing ${i + 1} / ${valid.length}…  [${line.mode}]  ${line.text.slice(0, 50)}`;
+    document.querySelectorAll(".line-table tr").forEach(tr => tr.classList.remove("playing", "error"));
+    const row = $("lineBody").querySelector(`tr[data-idx="${lineIdx}"]`);
+    if (row) row.classList.add("playing");
+
+    try {
+      const { blob, meta } = await synthesise(line);
+      const fname = `${String(i+1).padStart(2,"0")}_${line.mode}_${safeFilename(line.voice||line.lang||line.text)}.wav`;
+      allBlobs.push({ blob, fileName: fname, meta });
+      const url = URL.createObjectURL(blob);
+      const div = document.createElement("div");
+      div.className = "result-item";
+      div.innerHTML = `
+        <span class="ri-label">#${i+1} <b>${line.mode}</b> ${escapeHtml(line.lang || "auto")}<br>
+          <small>⏱ ${meta.duration}s · ${meta.latency_ms}ms · ${(meta.size/1024).toFixed(0)}KB</small></span>
+        <audio controls src="${url}"></audio>
+        <button class="btn-dl btn-secondary">⬇ Save</button>
+      `;
+      div.querySelector(".btn-dl").onclick = () => {
+        const a = document.createElement("a"); a.href = url; a.download = fname; a.click();
+      };
+      $("results").appendChild(div);
+
+      if (!stopRequested) {
+        const audio = div.querySelector("audio");
+        try { await audio.play(); await new Promise(r => audio.onended = r); } catch {}
+      }
+    } catch (e) {
+      const div = document.createElement("div");
+      div.className = "result-item";
+      div.innerHTML = `<span class="ri-label" style="color:var(--red)">#${i+1} ❌ ${escapeHtml(String(e))}</span>`;
+      $("results").appendChild(div);
+      if (row) { row.classList.remove("playing"); row.classList.add("error"); }
+    }
+  }
+
+  document.querySelectorAll(".line-table tr").forEach(tr => tr.classList.remove("playing"));
+  $("progress").textContent = stopRequested ? "⏹ Stopped." : `✓ Done! Generated ${allBlobs.length} files.`;
+  isPlaying = false;
+  $("btnPlayAll").disabled = false; $("btnStop").disabled = true;
+  $("statusDot").className = "dot connected";
+
+  if (allBlobs.length) {
+    $("btnDownloadAll").disabled = false;
+    $("btnDownloadAll").onclick = async () => {
+      const zip = new JSZip();
+      allBlobs.forEach(({ blob, fileName }) => zip.file(fileName, blob));
+      const content = await zip.generateAsync({ type: "blob" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(content);
+      a.download = `omnivoice_${new Date().toISOString().slice(0,10)}.zip`;
+      a.click();
+    };
+  }
+};
+
+$("btnStop").onclick = () => {
+  stopRequested = true;
+  document.querySelectorAll("audio").forEach(a => { a.pause(); a.currentTime = 0; });
+};
+
+document.addEventListener("keydown", e => {
+  if (e.ctrlKey && e.key === "Enter") $("btnPlayAll").click();
+});
+
+// ============================================================================
+// Buttons (lines)
+// ============================================================================
+$("btnAdd").onclick = () => addLine();
+$("btnClear").onclick = () => { lines = []; addLine(); };
+$("btnPaste").onclick = () => {
+  const raw = prompt("Paste multiple lines (one per line).\nSupported format: profile_name|lang: text  or  lang: text");
+  if (!raw) return;
+  raw.split("\n").map(l => l.trim()).filter(Boolean).forEach(l => addLine(l));
+};
+
+// ============================================================================
+// Upload voice
+// ============================================================================
+$("btnUploadVoice").onclick = () => {
+  $("uplName").value = ""; $("uplFile").value = "";
+  $("uplRefText").value = ""; $("uplNote").value = "";
+  $("uploadModal").classList.add("show");
+};
+$("uplCancel").onclick = () => $("uploadModal").classList.remove("show");
+$("uplConfirm").onclick = async () => {
+  const f = $("uplFile").files[0];
+  const name = $("uplName").value.trim();
+  if (!f) return toast("Select an audio file first", "error");
+  if (!name) return toast("Enter a profile name", "error");
+  const fd = new FormData();
+  fd.append("name", name);
+  fd.append("ref_text", $("uplRefText").value);
+  fd.append("language", $("uplLang").value);
+  fd.append("note", $("uplNote").value);
+  fd.append("audio", f);
+  $("uplConfirm").disabled = true;
+  $("uplConfirm").textContent = "Saving…";
+  try {
+    const r = await fetch(apiURL("/api/voices"), { method: "POST", body: fd });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || r.statusText);
+    await refreshVoicesFromServer();
+    toast(`✓ Saved profile "${j.voice.name}"`, "success");
+    $("uploadModal").classList.remove("show");
+  } catch (e) { toast("Error: " + e.message, "error"); }
+  $("uplConfirm").disabled = false;
+  $("uplConfirm").textContent = "Save profile";
+};
+
+// ============================================================================
+// Import dialogue
+// ============================================================================
+$("btnImport").onclick = () => {
+  $("importFile").value = ""; $("importText").value = "";
+  $("importModal").classList.add("show");
+};
+$("importCancel").onclick = () => $("importModal").classList.remove("show");
+$("importConfirm").onclick = async () => {
+  let rows = [];
+  if ($("importFile").files.length) rows = await parseFile($("importFile").files[0]);
+  else if ($("importText").value.trim()) rows = parseContent($("importText").value);
+  if (!rows.length) return toast("No lines found", "error");
+  rows.filter(r => r.text && r.text.trim()).forEach(r => {
+    addLine(r.text, {
+      voice: r.voice && SERVER.voices.some(v => v.name === r.voice) ? r.voice : null,
+      lang:  r.lang || null,
+      mode:  r.mode || null,
+    });
+  });
+  $("importModal").classList.remove("show");
+};
+
+async function parseFile(file) {
+  const ext = (file.name.split(".").pop() || "").toLowerCase();
+  const buf = await file.arrayBuffer();
+  if (ext === "xlsx" || ext === "xls") {
+    const wb = XLSX.read(buf, { type: "array" });
+    const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
+    return parseTableRows(data);
+  }
+  const text = new TextDecoder().decode(buf);
+  if (ext === "csv") return parseCSV(text);
+  return parseContent(text);
+}
+function parseContent(text) {
+  if (text.includes("|") && text.includes("---")) return parseMDTable(text);
+  const first = text.split("\n")[0];
+  if (first.includes(",") && /voice|lang|text/i.test(first)) return parseCSV(text);
+  return text.split("\n").map(l => l.trim()).filter(Boolean).map(l => parseQuickLine(l));
+}
+function parseMDTable(text) {
+  const rows = text.split("\n").filter(l => l.includes("|") && !/^\s*\|?\s*[-:]+/.test(l));
+  if (rows.length < 2) return [];
+  const header = rows[0].split("|").map(c => c.trim().toLowerCase()).filter(Boolean);
+  return rows.slice(1).map(row => {
+    const cells = row.split("|").map(c => c.trim()).filter(Boolean);
+    const obj = {}; header.forEach((h, i) => obj[h] = cells[i] || "");
+    return normalizeRow(obj);
+  }).filter(r => r.text);
+}
+function parseCSV(text) {
+  const ls = text.split("\n").filter(l => l.trim());
+  if (ls.length < 2) return [];
+  const header = ls[0].split(",").map(c => c.trim().toLowerCase().replace(/"/g, ""));
+  return ls.slice(1).map(row => {
+    const cells = row.match(/(".*?"|[^,]+)/g)?.map(c => c.trim().replace(/^"|"$/g, "")) || [];
+    const obj = {}; header.forEach((h, i) => obj[h] = cells[i] || "");
+    return normalizeRow(obj);
+  }).filter(r => r.text);
+}
+function parseTableRows(data) {
+  if (data.length < 2) return [];
+  const header = data[0].map(c => String(c || "").trim().toLowerCase());
+  return data.slice(1).map(row => {
+    const obj = {}; header.forEach((h, i) => obj[h] = row[i] != null ? String(row[i]).trim() : "");
+    return normalizeRow(obj);
+  }).filter(r => r.text);
+}
+function normalizeRow(obj) {
+  const tk = Object.keys(obj).find(k => /text|content|line|sentence|nội dung|câu/i.test(k)) || Object.keys(obj).pop();
+  const vk = Object.keys(obj).find(k => /voice|profile|speaker|giọng/i.test(k));
+  const lk = Object.keys(obj).find(k => /lang|language|ngôn ngữ/i.test(k));
+  const mk = Object.keys(obj).find(k => /mode/i.test(k));
+  return {
+    text: obj[tk] || "",
+    voice: vk ? obj[vk] : null,
+    lang:  lk ? obj[lk] : null,
+    mode:  mk && ["auto","clone","design"].includes(obj[mk]?.toLowerCase()) ? obj[mk].toLowerCase() : null,
+  };
+}
+
+// ============================================================================
+// Boot
+// ============================================================================
+addLine("Hello! This is OmniVoice — a zero-shot TTS supporting 600+ languages.", { lang: "English" });
+addLine("You can insert non-verbal markers like [laughter] anywhere in the text.", { lang: "English" });
+addLine("Bonjour ! Ceci est un test multilingue.", { lang: "French" });
+
+// Hide onboarding if user dismissed before
+if (localStorage.getItem("omnivoice_onb_dismissed") === "1") {
+  $("onboarding").open = false;
+}
+$("onboarding").addEventListener("toggle", () => {
+  if (!$("onboarding").open) localStorage.setItem("omnivoice_onb_dismissed", "1");
+});
+
+connect();
+</script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+mode,voice,lang,text
+auto,,English,Hello! This is the first line in auto mode.
+clone,alice,English,This line uses the `alice` voice profile if it exists.
+design,,English,"This line uses voice design - set instruct in the default panel."
+auto,,English,Multiple lines convert one after another sequentially.
+auto,,Japanese,こんにちは、これは日本語のテストです。

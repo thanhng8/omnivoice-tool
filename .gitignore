@@ -31,3 +31,4 @@ examples/exp*
 
 # --- Fork-private dev scripts (not for upstream / public repo) ---
 tool/sync_upstream.bat
+tool/POSTS.md

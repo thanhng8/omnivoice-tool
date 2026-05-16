@@ -28,3 +28,6 @@ examples/exp*
 .claude/
 *.wav
 *.jsonl
+
+# --- Fork-private dev scripts (not for upstream / public repo) ---
+tool/sync_upstream.bat

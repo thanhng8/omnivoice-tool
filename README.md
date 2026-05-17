@@ -10,7 +10,7 @@
 
 ## ✨ Highlights
 
-- 🚀 **Interactive launcher** — `start_omnivoice_server.bat` shows a numbered menu (GPU + ASR / GPU only / CPU / custom port / advanced) and starts the server in seconds.
+- 🚀 **Interactive launcher** — `start_omnivoice_server.bat` (Windows) and `start_omnivoice_server.sh` (macOS/Linux) show a numbered menu (GPU + ASR / GPU only / CPU / custom port / advanced) and start the server in seconds.
 - ⚡ **Sub-second startup after first run** — `HF_HUB_OFFLINE=1` skips network checks; cached model loads in 3–5 s.
 - 🌍 **646 languages** — every language OmniVoice supports is exposed in the UI dropdown, with popular ones surfaced first.
 - 🎭 **Three generation modes per line** — switch between **Auto Voice**, **Voice Clone** (from gallery or upload), and **Voice Design** (gender × age × pitch × accent × dialect) row by row.
@@ -34,13 +34,16 @@
 | [`omnivoice_web.html`](tool/omnivoice_web.html) | Standalone single-page client. Three-step layout (pick voice → write text → generate), a Voice Gallery with gender/age grouping + ▶ preview on every voice, a live `instruct →` preview for Voice Design, and a multi-line dialogue table where each row can override mode/voice/language. No build step. |
 | [`build_voice_gallery.py`](tool/build_voice_gallery.py) | Pre-builds the curated voice gallery. For EN/ZH it runs the native Voice Design pack; for other languages it does **cross-lingual design cloning** (controlled English/Chinese reference → cloned to the target language) plus a random pack auto-classified by median F0 (`librosa.yin`). All output is saved as ready-to-clone profiles. |
 | [`start_omnivoice_server.bat`](tool/start_omnivoice_server.bat) | Interactive Windows launcher with a numbered menu (`[1]` GPU+ASR, `[2]` GPU only, `[3]` CPU, `[4]` custom port, `[5]` advanced). Sets `HF_HUB_OFFLINE=1` and `TRANSFORMERS_OFFLINE=1` so subsequent boots are 3–5 s. Skips the menu if args are passed directly. |
+| [`start_omnivoice_server.sh`](tool/start_omnivoice_server.sh) | macOS/Linux equivalent of the `.bat` launcher — same menu, same behavior, compatible with bash/zsh. Run `chmod +x start_omnivoice_server.sh` before first use. |
 | [`WEBSOCKET_API.md`](tool/WEBSOCKET_API.md) | Full protocol spec covering all 3 modes, every generation parameter, voice profile HTTP CRUD, and ready-to-paste examples for vanilla JS, Chrome MV3 (with offscreen audio playback), Node.js, and Python. |
 | [`voice_prompts/`](tool/voice_prompts/) | The voice gallery directory. Each profile is `<name>.wav` (audio) + `<name>.json` (`{"ref_text", "language", "note", "tags"}`). Pre-populated with 45 curated voices after a one-time `build_voice_gallery.py` run. |
 | [`samples/`](tool/samples/) | Ready-to-import dialogue samples in `.csv`, `.md` (markdown table), and `.txt` (with `voice\|lang: text` prefix shorthand). |
 
 ---
 
-## 🚀 Quick Start (Windows)
+## 🚀 Quick Start
+
+### Windows
 
 **1. Install OmniVoice** — see [Upstream Setup](#-upstream-setup) below. Only needed once.
 
@@ -61,6 +64,27 @@ start_omnivoice_server.bat
 ```
 
 A menu appears — pick `[1]` for GPU + Whisper (default), `[2]` for GPU without Whisper (saves 1.5 GB VRAM), or `[3]` for CPU. The server listens on `http://127.0.0.1:8765`.
+
+### macOS / Linux
+
+```bash
+cd tool
+
+# Optional: pre-build voice gallery
+python build_voice_gallery.py --languages vi,en,zh --xlingual --xlingual-via zh
+
+# Make executable (first time only)
+chmod +x start_omnivoice_server.sh
+
+# Start the server
+./start_omnivoice_server.sh
+# or specify python path
+./start_omnivoice_server.sh /usr/bin/python3
+```
+
+The menu is identical to the Windows version — pick `[1]` for GPU + Whisper (default), `[2]` for GPU without Whisper (saves 1.5 GB VRAM), or `[3]` for CPU. The server listens on `http://127.0.0.1:8765`.
+
+> **Note**: On macOS with Apple Silicon (M1/M2/M3), the server auto-detects and uses `mps` as the device. On Linux, it uses `cuda`. Run with `--cpu` to force CPU-only mode.
 
 **4. Open the web UI:**
 
@@ -185,10 +209,16 @@ For each request the server replies with two paired frames:
 ### CLI
 
 ```bat
+:: Windows
 python ws_omnivoice_server.py [--port N] [--ip 127.0.0.1] [--device cuda|mps|cpu] [--cpu] [--dtype float16|float32|bfloat16] [--no-asr] [--asr-model openai/whisper-large-v3-turbo] [--model k2-fsa/OmniVoice]
 ```
 
-The `start_omnivoice_server.bat` wrapper provides an interactive menu for the most common flag combinations.
+```bash
+# macOS / Linux
+python ws_omnivoice_server.py [--port N] [--device cuda|mps|cpu] [--cpu] [--dtype float16|float32|bfloat16] [--no-asr] [--asr-model openai/whisper-large-v3-turbo] [--model k2-fsa/OmniVoice]
+```
+
+The `start_omnivoice_server.bat` / `start_omnivoice_server.sh` wrappers provide an interactive menu for the most common flag combinations.
 
 ---
 
@@ -224,7 +254,7 @@ gallery_vi_xl_female_whisper       gallery_vi_xl_male_elderly_deep
 ### Common usage
 
 ```bat
-:: Defaults: VI random pack + EN design pack + ZH design pack
+:: Windows
 python build_voice_gallery.py
 
 :: Vietnamese-focused: 20 named voices + 16 random
@@ -237,6 +267,17 @@ python build_voice_gallery.py --languages vi,en,zh,ja,ko,fr,de,es,it,ru --random
 python build_voice_gallery.py --skip-existing
 ```
 
+```bash
+# macOS / Linux (same syntax)
+python build_voice_gallery.py
+
+python build_voice_gallery.py --languages vi --xlingual --xlingual-via zh --random-voices 16
+
+python build_voice_gallery.py --languages vi,en,zh,ja,ko,fr,de,es,it,ru --random-voices 8 --xlingual
+
+python build_voice_gallery.py --skip-existing
+```
+
 | Flag | Meaning |
 |---|---|
 | `--languages` | Comma-separated language codes (default `vi,en,zh`). |
@@ -246,7 +287,7 @@ python build_voice_gallery.py --skip-existing
 | `--num-step N` | Diffusion steps for generation (default 24). Lower = faster, lower quality. |
 | `--no-design` / `--no-random` | Skip respective pack. |
 | `--skip-existing` | Don't regenerate profiles already on disk. |
-| `--device` / `--dtype` / `--cpu` | Same as the server. |
+| `--device` / `--dtype` / `--cpu` | Same as the server. Auto-detects `cuda` on Linux, `mps` on macOS Apple Silicon, and `cpu` as fallback. |
 
 ---
 
